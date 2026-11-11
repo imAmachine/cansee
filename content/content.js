@@ -46,7 +46,7 @@
   function title() {
     const x = data;
     shell(`<article class="title"><div class="title-head">${x.poster ? `<img src="${esc(x.poster)}">` : ''}<div><p class="eyebrow">${esc(x.type)} · ${esc(x.year)}</p><h1>${esc(x.name)}</h1><p class="muted">${esc(x.genre)} · ${esc(x.count)}</p><p>${esc(x.description)}</p></div></div>
-      <div class="section-title"><h2>Серии</h2><button id="download-all" class="secondary">Скачать всё</button></div><div class="episodes">${x.episodes.map((e, i) => `<div class="episode"><span>${esc(e.name)}</span><button data-episode="${i}">Скачать</button><button class="watch" data-watch="${i}">Смотреть</button></div>`).join('')}</div><div id="player"></div></article>`);
+      <div id="player"></div><div class="section-title episode-heading"><h2>Серии</h2><button id="download-all" class="secondary">Скачать всё</button></div><div class="episodes">${x.episodes.map((e, i) => `<div class="episode"><span title="${esc(e.name)}">${esc(e.name)}</span><button data-episode="${i}" title="Скачать ${esc(e.name)}">↓</button><button class="watch" data-watch="${i}" title="Смотреть ${esc(e.name)}">▶</button></div>`).join('')}</div></article>`);
     const resolve = async (episode) => {
       // getlink.php отдаёт устаревший roomfish URL. Штатный frame5 выбирает актуальный сервер.
       const response = await fetch(`${location.origin}/frame5.php?play=${episode.id}&old=1`, { credentials: 'include' });
