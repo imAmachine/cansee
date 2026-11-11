@@ -70,3 +70,15 @@ header { background:var(--bg) }
 #vost-app.cinema-mode .episode-panel { position:fixed; right:18px; top:72px; z-index:12; width:285px; opacity:.96; }
 #vost-app.cinema-mode .player-tools { position:fixed; top:14px; right:18px; z-index:20; }
 @media (max-width:900px) { .watch-layout { grid-template-columns:1fr; } .episode-panel { max-height:none; } .episode-panel .episodes { max-height:260px; } #vost-app.cinema-mode .episode-panel { right:10px; left:10px; top:auto; bottom:10px; width:auto; max-height:42vh; } #vost-app.cinema-mode .player-column { padding:54px 8px 8px; } }
+
+/* Consistent title-page alignment and initial player state. */
+.title { width:100%; max-width:1280px; margin:0 auto; }
+.title-head { width:100%; max-width:none; align-items:start; }
+.title-head > div { min-width:0; }
+.watch-layout { width:100%; max-width:none; align-items:start; }
+.player-column, .episode-panel { min-height:0; }
+.player-tools { min-height:36px; align-items:center; }
+.player-placeholder { display:flex; align-items:center; justify-content:center; min-height:220px; aspect-ratio:16 / 9; width:min(1050px,100%); padding:24px; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--muted); text-align:center; }
+.episode.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+.episode.selected .watch { background:var(--accent); color:#11121a; border-color:var(--accent); }
+@media (min-width:901px) { .watch-layout { grid-template-columns:minmax(0,1fr) 300px; } .episode-panel { width:300px; } }

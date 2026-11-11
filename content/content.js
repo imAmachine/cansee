@@ -59,7 +59,31 @@
       return { url, name: `${x.name} - ${episode.name.replace(/[^\d]+/, '').padStart(2, '0')}` };
     };
     root.querySelectorAll('[data-episode]').forEach(btn => btn.onclick = async () => { try { const item = await resolve(x.episodes[btn.dataset.episode]); await chrome.runtime.sendMessage({ type: 'download', item: { url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` } }); btn.textContent = 'Отправлено'; } catch (e) { alert(e.message); } });
-    root.querySelectorAll('[data-watch]').forEach(btn => btn.onclick = async () => { try { const item = await resolve(x.episodes[btn.dataset.watch]); const url = new URL(item.url); url.searchParams.delete('d'); root.querySelector('#player').innerHTML = `<video controls autoplay playsinline src="${esc(url.href)}"></video><p class="muted" id="player-error" hidden>Видео недоступно. Попробуйте другую сеть или штатный плеер сайта.</p>`; root.querySelector('video').addEventListener('error', () => { root.querySelector('#player-error').hidden = false; }); root.querySelector('#player').scrollIntoView({ behavior: 'smooth' }); } catch (e) { alert(e.message); } });
+    let playerRequest = 0;
+    const player = root.querySelector('#player');
+    async function showEpisode(index, autoplay = false) {
+      const request = ++playerRequest;
+      root.querySelectorAll('[data-watch]').forEach(button => {
+        const selected = Number(button.dataset.watch) === index;
+        button.closest('.episode').classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', String(selected));
+      });
+      player.innerHTML = '<div class="player-placeholder" role="status">Загружаем плеер…</div>';
+      try {
+        const item = await resolve(x.episodes[index]);
+        if (request !== playerRequest) return;
+        const url = new URL(item.url);
+        url.searchParams.delete('d');
+        player.innerHTML = `<video controls playsinline preload="metadata" ${autoplay ? 'autoplay' : ''} src="${esc(url.href)}"></video><p class="muted" id="player-error" hidden>Видео недоступно. Попробуйте другую сеть или штатный плеер сайта.</p>`;
+        player.querySelector('video').addEventListener('error', () => { player.querySelector('#player-error').hidden = false; });
+        if (autoplay) player.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (error) {
+        if (request === playerRequest) player.innerHTML = `<div class="player-placeholder" role="alert">Не удалось загрузить серию: ${esc(error.message)}</div>`;
+      }
+    }
+    root.querySelectorAll('[data-watch]').forEach(btn => btn.onclick = () => showEpisode(Number(btn.dataset.watch), true));
+    if (x.episodes.length) showEpisode(0);
+    else player.innerHTML = '<div class="player-placeholder">Список серий недоступен.</div>';
     root.querySelector('#download-all').onclick = async () => { if (!x.episodes.length || !confirm(`Скачать серий: ${x.episodes.length}?`)) return; try { const items = []; for (const e of x.episodes) { const item = await resolve(e); items.push({ url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` }); } await chrome.runtime.sendMessage({ type: 'downloadMany', items }); root.querySelector('#download-all').textContent = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } };
     root.querySelector('#toggle-episodes').onclick = () => { const panel = root.querySelector('.episode-panel'); const hidden = panel.classList.toggle('collapsed'); root.querySelector('#toggle-episodes').textContent = hidden ? 'Показать серии' : 'Скрыть'; root.querySelector('#toggle-episodes').title = hidden ? 'Показать список серий' : 'Скрыть список серий'; };
     root.querySelector('#cinema').onclick = () => { const active = app.classList.toggle('cinema-mode'); root.querySelector('#cinema').textContent = active ? 'Выйти из кинотеатра' : 'Режим кинотеатра'; document.documentElement.classList.toggle('vost-cinema-open', active); };
