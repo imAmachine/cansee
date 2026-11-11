@@ -62,13 +62,13 @@
     return items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small></div></a>`).join('');
   }
   function listing() {
-    const latest = data.latest.map(item => ({ ...item, poster: data.cards.find(card => card.url === item.url)?.poster || cachedCover(item.url) })); const items = data.cards;
     const isSearch = location.search.includes('do=search');
     const isCatalog = !isSearch && location.pathname !== '/' && !location.pathname.endsWith('/index.php');
     const activeSection = isSearch ? '' : (isCatalog ? 'catalog' : 'latest');
-    const recent = latest.length ? `<aside class="sidebar"><details open><summary>Последние обновления <span>${latest.length}</span></summary><div class="latest">${latest.map((x, i) => `<a class="latest-item" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img class="latest-backdrop" src="${esc(x.poster)}" alt="" aria-hidden="true"><img class="latest-poster" src="${esc(x.poster)}" alt="" loading="lazy">` : '<span class="latest-poster placeholder" aria-hidden="true"></span>'}<span class="latest-index">${String(i + 1).padStart(2, '0')}</span><span class="latest-name">${esc(x.name)}</span></a>`).join('')}</div></details></aside>` : '';
-    shell(`<div class="layout">${recent}<section class="main-column"><div class="hero"><h1>${isSearch ? 'Результаты поиска' : (isCatalog ? 'Каталог' : 'Последние')}</h1>${isSearch ? `<p>По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»</p>` : ''}</div>
-      <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section></div>`, activeSection);
+    const latestMode = !isSearch && !isCatalog;
+    const items = latestMode ? data.latest.map(item => ({ ...item, poster: data.cards.find(card => card.url === item.url)?.poster || cachedCover(item.url), info: '' })) : data.cards;
+    shell(`<section class="main-column listing-page"><div class="hero"><h1>${isSearch ? 'Результаты поиска' : (isCatalog ? 'Каталог' : 'Последние')}</h1>${isSearch ? `<p>По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»</p>` : ''}</div>
+      <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section>`, activeSection);
     const grid = root.querySelector('#catalog-grid');
     let currentPage = Number(location.pathname.match(/\/page\/(\d+)\//)?.[1] || 1);
     let nextPage = data.pages.find(page => Number(page.name) === currentPage + 1)?.url || null;
@@ -91,10 +91,14 @@
       } catch (error) { root.querySelector('#catalog-status').textContent = `${error.message}. Обновите страницу, чтобы повторить.`; } finally { loading = false; }
       if (nextPage && sentinel.getBoundingClientRect().top < innerHeight + 500 && !root.querySelector('#catalog-status').textContent) loadPage();
     };
-    const pageObserver = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) loadPage(); }, { rootMargin: '500px' });
-    pageObserver.observe(sentinel);
-    const sidebar = root.querySelector('.sidebar .latest');
-    if (sidebar) {
+    if (!latestMode && !isSearch) {
+      const pageObserver = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) loadPage(); }, { rootMargin: '500px' });
+      pageObserver.observe(sentinel);
+    } else {
+      sentinel.remove();
+    }
+    const sidebar = root.querySelector('.listing-page');
+    if (latestMode && sidebar) {
       const pending = [];
       let active = 0;
       const loadNext = () => {
@@ -112,12 +116,9 @@
             const src = doc.querySelector('#dle-content .shortstoryContent img.imgRadius')?.getAttribute('src');
             if (!src || !placeholder.isConnected) return;
             const image = document.createElement('img');
-            image.className = 'latest-poster'; image.alt = ''; image.loading = 'lazy';
+            image.alt = ''; image.loading = 'lazy';
             image.src = new URL(src, url.href).href;
             saveCover(url.href, image.src);
-            const link = placeholder.closest('a');
-            const backdrop = document.createElement('img'); backdrop.className = 'latest-backdrop'; backdrop.alt = ''; backdrop.setAttribute('aria-hidden', 'true'); backdrop.src = image.src;
-            link.insertBefore(backdrop, link.firstChild);
             placeholder.replaceWith(image);
           }).catch(() => {}).finally(() => { active--; loadNext(); });
         }
@@ -129,8 +130,8 @@
           pending.push(entry.target);
         }
         loadNext();
-      }, { root: sidebar, rootMargin: '0px' });
-      sidebar.querySelectorAll('.latest-poster.placeholder').forEach(element => observer.observe(element));
+      }, { rootMargin: '200px' });
+      sidebar.querySelectorAll('.poster').forEach(element => observer.observe(element));
     }
   }
   function title() {
