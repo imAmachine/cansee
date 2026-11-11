@@ -22,7 +22,7 @@
     try { cache[url] = { html, time: Date.now() }; pageCache = Object.fromEntries(Object.entries(cache).filter(([, item]) => Date.now() - item.time < PAGE_TTL)); localStorage.setItem(PAGE_CACHE_KEY, JSON.stringify(pageCache)); } catch {}
     return html;
   }
-  const icon = name => ({
+  const iconPath = name => ({
     search:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/></svg>',
     sun:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
     moon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/></svg>',
@@ -30,6 +30,12 @@
     list:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14"/></svg>',
     download:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 20h16"/></svg>'
   }[name] || '');
+  function makeIcon(name) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = iconPath(name);
+    return svg;
+  }
   function cardsFromHtml(html) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return [...doc.querySelectorAll('.shortstory')].map(card => {
@@ -50,11 +56,12 @@
   });
 
   function shell(content, active = '', options = {}) {
-    const viewToggle = options.view ? `<button id="view-toggle" class="view-toggle" title="Переключить вид" aria-label="Переключить вид"><span aria-hidden="true">${icon('list')}</span></button>` : '';
+    const viewToggle = options.view ? '<button id="view-toggle" class="view-toggle" title="Переключить вид" aria-label="Переключить вид"></button>' : '';
     app.innerHTML = `<header><a class="brand" href="${location.origin}/">VOST<span>CLEAN</span></a><nav>
       <a class="${active === 'latest' ? 'active' : ''}" href="${location.origin}/">Последние</a>
       <a class="${active === 'catalog' ? 'active' : ''}" href="${location.origin}/page/2/">Каталог</a>
-    </nav><form id="search"><input name="story" placeholder="Найти тайтл…" autocomplete="off"><button aria-label="Поиск">${icon('search')}</button></form>${viewToggle}<button id="theme" class="theme" title="Сменить тему" aria-label="Сменить тему"><span aria-hidden="true">${icon('sun')}</span></button></header><section class="content">${content}</section>`;
+    </nav><form id="search"><input name="story" placeholder="Найти тайтл…" autocomplete="off"><button aria-label="Поиск"></button></form>${viewToggle}<button id="theme" class="theme" title="Сменить тему" aria-label="Сменить тему"></button></header><section class="content">${content}</section>`;
+    root.querySelector('#search button').append(makeIcon('search'));
     root.querySelector('#search').addEventListener('submit', e => {
       e.preventDefault(); const value = String(new FormData(e.currentTarget).get('story') || '').trim();
       if (value) {
@@ -66,19 +73,19 @@
     const theme = root.querySelector('#theme');
     const current = localStorage.getItem('vost-theme') || 'dark';
     app.dataset.theme = current;
-    theme.querySelector('span').textContent = current === 'dark' ? icon('sun') : icon('moon');
-    theme.onclick = () => { const next = app.dataset.theme === 'dark' ? 'light' : 'dark'; app.dataset.theme = next; localStorage.setItem('vost-theme', next); theme.querySelector('span').textContent = next === 'dark' ? icon('sun') : icon('moon'); };
+    theme.append(makeIcon(current === 'dark' ? 'sun' : 'moon'));
+    theme.onclick = () => { const next = app.dataset.theme === 'dark' ? 'light' : 'dark'; app.dataset.theme = next; localStorage.setItem('vost-theme', next); theme.replaceChildren(makeIcon(next === 'dark' ? 'sun' : 'moon')); };
     if (options.view) {
       const toggle = root.querySelector('#view-toggle');
       const view = localStorage.getItem('vost-view') || 'grid';
       app.dataset.view = view;
-      toggle.querySelector('span').textContent = view === 'grid' ? icon('list') : icon('grid');
+      toggle.append(makeIcon(view === 'grid' ? 'list' : 'grid'));
       toggle.title = view === 'grid' ? 'Показать списком' : 'Показать сеткой';
-      toggle.onclick = () => { const next = app.dataset.view === 'grid' ? 'list' : 'grid'; app.dataset.view = next; root.querySelector('.main-column').dataset.view = next; localStorage.setItem('vost-view', next); toggle.querySelector('span').textContent = next === 'grid' ? icon('list') : icon('grid'); toggle.title = next === 'grid' ? 'Показать списком' : 'Показать сеткой'; };
+      toggle.onclick = () => { const next = app.dataset.view === 'grid' ? 'list' : 'grid'; app.dataset.view = next; root.querySelector('.main-column').dataset.view = next; localStorage.setItem('vost-view', next); toggle.replaceChildren(makeIcon(next === 'grid' ? 'list' : 'grid')); toggle.title = next === 'grid' ? 'Показать списком' : 'Показать сеткой'; };
     }
   }
   function cards(items) {
-    return items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small><button class="card-download-all" data-download-all="${esc(x.url)}" title="Скачать все доступные серии">${icon('download')}<span>Все серии</span></button></div></a>`).join('');
+    return items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small><button class="card-download-all" data-download-all="${esc(x.url)}" title="Скачать все доступные серии"><span class="download-icon" aria-hidden="true"></span><span>Все серии</span></button></div></a>`).join('');
   }
   async function episodeLinks(titleUrl) {
     const html = await getPage(titleUrl);
@@ -109,6 +116,7 @@
       <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section>`, activeSection, { view: true });
     const view = localStorage.getItem('vost-view') || 'grid';
     root.querySelector('.main-column').dataset.view = view;
+    root.querySelectorAll('.download-icon').forEach(element => element.replaceWith(makeIcon('download')));
     root.querySelectorAll('[data-download-all]').forEach(button => button.addEventListener('click', async event => {
       event.preventDefault(); event.stopPropagation();
       const original = button.textContent; button.disabled = true; button.textContent = 'Загрузка…';
