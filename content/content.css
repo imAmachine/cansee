@@ -152,6 +152,16 @@ header { background:var(--bg) }
 .card-download-all:hover { border-color:var(--accent); color:var(--accent); }
 .card-download-all:disabled { opacity:.65; cursor:wait; }
 .main-column[data-view="grid"] .card-download-all { display:none; }
+
+/* Full-width header and a compact right-aligned action on list cards. */
+header { padding-left:0; padding-right:0; }
+.main-column[data-view="list"] .card > div:last-child { position:relative; padding-right:150px; }
+.main-column[data-view="list"] .card-download-all { position:absolute; top:50%; right:14px; margin:0; transform:translateY(-50%); display:inline-flex; align-items:center; gap:5px; min-height:30px; white-space:nowrap; border-radius:999px; font-size:11px; font-weight:700; }
+@media (max-width:700px) {
+  header { padding-left:0; padding-right:0; }
+  .main-column[data-view="list"] .card > div:last-child { padding-right:112px; }
+  .main-column[data-view="list"] .card-download-all { right:10px; padding:6px 8px; }
+}
 @media (max-width:850px) { .sidebar { margin-bottom: 18px; } }
 @media (max-width:700px) { .content { padding-top: 18px; } .watch-layout { margin-top: 18px; } .title-head { height:auto; max-height:none; overflow:visible; } .title-head > div { overflow:visible; } .title-head > div > p:last-child { display:block; overflow:visible; } }
 .title-head img { height: 360px; }
