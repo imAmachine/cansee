@@ -68,7 +68,26 @@
     }
   }
   function cards(items) {
-    return items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small></div></a>`).join('');
+    return items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small><button class="card-download-all" data-download-all="${esc(x.url)}" title="Скачать все доступные серии">↓ Все серии</button></div></a>`).join('');
+  }
+  async function episodeLinks(titleUrl) {
+    const html = await getPage(titleUrl);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const heading = A.clean(doc.querySelector('#dle-content .shortstoryHead h1, h1')?.textContent || document.title).replace(/\s*\[[^\]]+\]\s*$/, '');
+    const episodes = [];
+    for (const script of doc.scripts) {
+      const match = script.textContent.match(/var data\s*=\s*\{([\s\S]*?)\};/);
+      if (!match) continue;
+      for (const item of match[1].matchAll(/"([^"\n]+)"\s*:\s*"?(\d+)"?/g)) episodes.push({ name:item[1], id:item[2] });
+    }
+    const links = [];
+    for (const episode of episodes) {
+      const frame = await fetch(`${location.origin}/frame5.php?play=${episode.id}&old=1`, { credentials:'include', cache:'no-store' });
+      const frameDoc = new DOMParser().parseFromString(await frame.text(), 'text/html');
+      const url = [...frameDoc.querySelectorAll('a[download][href*=".mp4"]')].map(a => a.href).find(url => /720\//.test(url)) || [...frameDoc.querySelectorAll('a[download][href*=".mp4"]')].map(a => a.href)[0];
+      if (url) links.push({ url, filename: `${safe(heading)}/${safe(`${heading} - ${episode.name.replace(/[^\d]+/, '').padStart(2, '0')}`)}.mp4` });
+    }
+    return links;
   }
   function listing() {
     const isSearch = location.search.includes('do=search');
@@ -80,6 +99,17 @@
       <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section>`, activeSection, { view: true });
     const view = localStorage.getItem('vost-view') || 'grid';
     root.querySelector('.main-column').dataset.view = view;
+    root.querySelectorAll('[data-download-all]').forEach(button => button.addEventListener('click', async event => {
+      event.preventDefault(); event.stopPropagation();
+      const original = button.textContent; button.disabled = true; button.textContent = 'Загрузка…';
+      try {
+        const links = await episodeLinks(button.dataset.downloadAll);
+        if (!links.length) throw new Error('Серии не найдены');
+        await chrome.runtime.sendMessage({ type:'downloadMany', items:links });
+        button.textContent = `✓ ${links.length}`;
+      } catch (error) { button.textContent = 'Ошибка'; button.title = error.message; }
+      finally { setTimeout(() => { button.disabled = false; if (button.textContent === 'Ошибка') button.textContent = original; }, 2500); }
+    }));
     const grid = root.querySelector('#catalog-grid');
     let currentPage = Number(location.pathname.match(/\/page\/(\d+)\//)?.[1] || 1);
     let nextPage = data.pages.find(page => Number(page.name) === currentPage + 1)?.url || null;
