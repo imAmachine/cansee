@@ -44,27 +44,37 @@
       <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : 'Каталог'}</h2><span>${items.length} на странице</span></div>${items.length ? cards(items) : '<div class="empty">Ничего не найдено. Проверьте запрос и попробуйте ещё раз.</div>'}<div class="pages">${data.pages.map(x => `<a href="${esc(x.url)}">${esc(x.name)}</a>`).join('')}</div></section></div>`, isSearch ? '' : 'latest');
     const sidebar = root.querySelector('.sidebar .latest');
     if (sidebar) {
-      const observer = new IntersectionObserver(entries => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          observer.unobserve(entry.target);
-          const link = entry.target.closest('a');
-          const url = new URL(link.href);
+      const pending = [];
+      let active = 0;
+      const loadNext = () => {
+        while (active < 2 && pending.length) {
+          const placeholder = pending.shift();
+          if (!placeholder.isConnected) continue;
+          const url = new URL(placeholder.closest('a').href);
           if (url.origin !== location.origin) continue;
-          fetch(url.href, { credentials: 'same-origin' }).then(response => {
+          active++;
+          fetch(`${url.href}${url.search ? '&' : '?'}vost_cover=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' }).then(response => {
             if (!response.ok) throw new Error('Poster unavailable');
             return response.text();
           }).then(html => {
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const src = doc.querySelector('#dle-content .shortstoryContent img.imgRadius')?.getAttribute('src');
-            if (!src) return;
+            if (!src || !placeholder.isConnected) return;
             const image = document.createElement('img');
             image.className = 'latest-poster'; image.alt = ''; image.loading = 'lazy';
             image.src = new URL(src, url.href).href;
-            entry.target.replaceWith(image);
-          }).catch(() => {});
+            placeholder.replaceWith(image);
+          }).catch(() => {}).finally(() => { active--; loadNext(); });
         }
-      }, { root: sidebar, rootMargin: '100px' });
+      };
+      const observer = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          observer.unobserve(entry.target);
+          pending.push(entry.target);
+        }
+        loadNext();
+      }, { root: sidebar, rootMargin: '0px' });
       sidebar.querySelectorAll('.latest-poster.placeholder').forEach(element => observer.observe(element));
     }
   }
