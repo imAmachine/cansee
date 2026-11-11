@@ -2,14 +2,25 @@
   try {
   const A = window.VostAdapter;
   const type = A.currentType();
+  if (type === 'unsupported') { document.documentElement.classList.remove('vost-loading', 'vost-loading-light'); return; }
+  const requestText = async (url, options = {}) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch(url, { credentials: 'same-origin', ...options, signal: controller.signal });
+      if (!response.ok) throw new Error(`Ошибка HTTP ${response.status}`);
+      return await response.text();
+    } finally { clearTimeout(timer); }
+  };
+  const readObject = key => { try { const value = JSON.parse(localStorage.getItem(key) || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch { return {}; } };
   const data = type === 'title' ? A.title() : { latest: A.latest(), cards: A.cards(), pages: A.pages() };
   const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[c]));
   const COVER_CACHE_KEY = 'vost-cover-cache-v1';
   const COVER_TTL = 24 * 60 * 60 * 1000;
   let coverCache;
-  function readCoverCache() { if (coverCache) return coverCache; try { coverCache = JSON.parse(localStorage.getItem(COVER_CACHE_KEY) || '{}'); } catch { coverCache = {}; } return coverCache; }
+  function readCoverCache() { return coverCache ||= readObject(COVER_CACHE_KEY); }
   function cachedCover(url) { const item = readCoverCache()[url]; return item && Date.now() - item.time < COVER_TTL ? item.src : ''; }
-  function saveCover(url, src) { try { const cache = readCoverCache(); cache[url] = { src, time: Date.now() }; const fresh = Object.fromEntries(Object.entries(cache).filter(([, item]) => Date.now() - item.time < COVER_TTL)); coverCache = fresh; localStorage.setItem(COVER_CACHE_KEY, JSON.stringify(fresh)); } catch {} }
+  function saveCover(url, src) { try { const cache = readCoverCache(); cache[url] = { src, time: Date.now() }; const fresh = Object.fromEntries(Object.entries(cache).filter(([, item]) => item && typeof item.src === 'string' && Date.now() - item.time < COVER_TTL)); coverCache = fresh; localStorage.setItem(COVER_CACHE_KEY, JSON.stringify(fresh)); } catch {} }
   const PAGE_CACHE_KEY = 'vost-page-cache-v1';
   const PAGE_TTL = 15 * 60 * 1000;
   const META_CACHE_KEY = 'vost-latest-meta-v1';
@@ -33,14 +44,15 @@
     try { localStorage.setItem(META_CACHE_KEY, JSON.stringify(metaCache)); } catch { /* Storage may be unavailable or full. */ }
   }
   let pageCache;
-  function readPageCache() { if (pageCache) return pageCache; try { pageCache = JSON.parse(localStorage.getItem(PAGE_CACHE_KEY) || '{}'); } catch { pageCache = {}; } return pageCache; }
+  function readPageCache() { return pageCache ||= readObject(PAGE_CACHE_KEY); }
   async function getPage(url) {
     const cache = readPageCache();
     if (cache[url] && Date.now() - cache[url].time < PAGE_TTL) return cache[url].html;
-    const response = await fetch(`${url}${url.includes('?') ? '&' : '?'}vost_page=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' });
-    if (!response.ok) throw new Error('Не удалось загрузить страницу каталога');
-    const html = await response.text();
-    try { cache[url] = { html, time: Date.now() }; pageCache = Object.fromEntries(Object.entries(cache).filter(([, item]) => Date.now() - item.time < PAGE_TTL)); localStorage.setItem(PAGE_CACHE_KEY, JSON.stringify(pageCache)); } catch {}
+    const html = await requestText(url);
+    cache[url] = { html, time: Date.now() };
+    let bytes = 0;
+    pageCache = Object.fromEntries(Object.entries(cache).filter(([, item]) => item && typeof item.html === 'string' && Date.now() - item.time < PAGE_TTL).sort((a, b) => b[1].time - a[1].time).slice(0, 12).filter(([, item]) => (bytes += item.html.length * 2) < 2000000));
+    try { localStorage.setItem(PAGE_CACHE_KEY, JSON.stringify(pageCache)); } catch {}
     return html;
   }
   const iconPath = name => ({
@@ -58,12 +70,12 @@
     svg.innerHTML = iconPath(name);
     return svg;
   }
-  function cardsFromHtml(html) {
+  function cardsFromHtml(html, base = location.href) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return [...doc.querySelectorAll('.shortstory')].map(card => {
       const link = card.querySelector('.shortstoryHead a, .shortstoryFuter a[href*=".html"]');
       const image = card.querySelector('img');
-      return link ? { name: A.clean(link.textContent), url: new URL(link.href, location.href).href, poster: image?.src ? new URL(image.src, location.href).href : '', info: A.clean(card.querySelector('.shortstoryContent')?.textContent).slice(0, 220) } : null;
+      return link ? { name: A.clean(link.textContent), url: new URL(link.getAttribute('href'), base).href, poster: image?.getAttribute('src') ? new URL(image.getAttribute('src'), base).href : '', info: A.clean(card.querySelector('.shortstoryContent')?.textContent).slice(0, 220) } : null;
     }).filter(Boolean);
   }
   const host = document.createElement('div');
@@ -72,15 +84,16 @@
   const app = document.createElement('main');
   app.id = 'vost-app';
   root.append(app);
-  const response = await fetch(chrome.runtime.getURL('content/content.css'));
-  if (!response.ok) throw new Error('Не удалось загрузить стили расширения');
-  const style = document.createElement('style'); style.textContent = await response.text(); root.prepend(style);
+  const style = document.createElement('style');
+  style.textContent = await requestText(chrome.runtime.getURL('content/content.css'), { credentials: 'omit' });
+  if (window.vostStartupExpired) return;
+  root.prepend(style);
 
   function shell(content, active = '', options = {}) {
     const viewToggle = options.view ? '<button id="view-toggle" class="view-toggle" title="Переключить вид" aria-label="Переключить вид"></button>' : '';
     app.innerHTML = `<header><a class="brand" href="${location.origin}/">VOST<span>CLEAN</span></a><nav>
       <a class="${active === 'latest' ? 'active' : ''}" href="${location.origin}/">Последние</a>
-      <a class="${active === 'catalog' ? 'active' : ''}" href="${location.origin}/page/2/">Каталог</a>
+      <a class="${active === 'catalog' ? 'active' : ''}" href="${location.origin}/?vost_view=catalog">Каталог</a>
     </nav><form id="search"><input name="story" placeholder="Найти тайтл…" autocomplete="off"><button aria-label="Поиск"></button></form>${viewToggle}<button id="theme" class="theme" title="Сменить тему" aria-label="Сменить тему"></button></header><section class="content">${content}</section>`;
     root.querySelector('#search button').append(makeIcon('search'));
     root.querySelector('#search').addEventListener('submit', e => {
@@ -119,17 +132,22 @@
       for (const item of match[1].matchAll(/"([^"\n]+)"\s*:\s*"?(\d+)"?/g)) episodes.push({ name:item[1], id:item[2] });
     }
     const links = [];
+    const failures = [];
     for (const episode of episodes) {
-      const frame = await fetch(`${location.origin}/frame5.php?play=${episode.id}&old=1`, { credentials:'include', cache:'no-store' });
-      const frameDoc = new DOMParser().parseFromString(await frame.text(), 'text/html');
-      const url = [...frameDoc.querySelectorAll('a[download][href*=".mp4"]')].map(a => a.href).find(url => /720\//.test(url)) || [...frameDoc.querySelectorAll('a[download][href*=".mp4"]')].map(a => a.href)[0];
-      if (url) links.push({ url, filename: `${safe(heading)}/${safe(`${heading} - ${episode.name.replace(/[^\d]+/, '').padStart(2, '0')}`)}.mp4` });
+      try {
+      const frameDoc = new DOMParser().parseFromString(await requestText(`${location.origin}/frame5.php?play=${episode.id}&old=1`), 'text/html');
+      const urls = [...frameDoc.querySelectorAll('a[download][href*=".mp4"]')].map(a => new URL(a.getAttribute('href'), titleUrl).href);
+      const url = urls.find(url => /720\//.test(url)) || urls[0];
+      if (!url) throw new Error('Ссылка не найдена');
+      links.push({ url, filename: `${safe(heading)}/${safe(`${heading} - ${episode.name.replace(/[^\d]+/, '').padStart(2, '0')}`)}.mp4` });
+      } catch { failures.push(episode.name); }
     }
+    links.failures = failures;
     return links;
   }
   function listing() {
     const isSearch = location.search.includes('do=search');
-    const isCatalog = !isSearch && location.pathname !== '/' && !location.pathname.endsWith('/index.php');
+    const isCatalog = !isSearch && (new URLSearchParams(location.search).get('vost_view') === 'catalog' || (location.pathname !== '/' && !location.pathname.endsWith('/index.php')));
     const activeSection = isSearch ? '' : (isCatalog ? 'catalog' : 'latest');
     const latestMode = !isSearch && !isCatalog;
     const items = latestMode ? data.latest.map(item => { const card = data.cards.find(entry => entry.url === item.url); const meta = cachedMeta(item); return { ...item, poster: card?.poster || meta?.poster || cachedCover(item.url), date: card?.date || meta?.date || '', info: '' }; }) : data.cards;
@@ -146,8 +164,10 @@
       try {
         const links = await episodeLinks(button.dataset.downloadAll);
         if (!links.length) throw new Error('Серии не найдены');
-        await chrome.runtime.sendMessage({ type:'downloadMany', items:links });
-        button.textContent = `✓ ${links.length}`;
+        const result = await chrome.runtime.sendMessage({ type:'downloadMany', items:links });
+        if (!result?.accepted) throw new Error(result?.failures?.[0]?.error || 'Загрузка не создана');
+        button.textContent = `✓ ${result.accepted}`;
+        button.title = `Принято: ${result.accepted}. Ошибок: ${(links.failures?.length || 0) + result.failures.length}`;
       } catch (error) { button.textContent = 'Ошибка'; button.title = error.message; }
       finally { setTimeout(() => { button.disabled = false; if (button.textContent === 'Ошибка') button.textContent = original; }, 2500); }
     });
@@ -204,9 +224,7 @@
           try {
             const url = new URL(item.url);
             if (url.origin !== location.origin) continue;
-            const response = await fetch(url.href, { credentials: 'same-origin', cache: 'no-store' });
-            if (!response.ok) throw new Error('Ошибка загрузки тайтла');
-            const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const doc = new DOMParser().parseFromString(await requestText(url.href), 'text/html');
             const date = A.clean(doc.querySelector('#dle-content .staticInfoLeftData')?.textContent);
             const src = doc.querySelector('#dle-content .shortstoryContent img.imgRadius')?.getAttribute('src');
             const poster = src ? new URL(src, url.href).href : item.poster;
@@ -231,23 +249,30 @@
         clearTimeout(timer);
         renderGroups();
         status.textContent = '';
+        if (remainingDates) {
+          const refresh = document.createElement('button'); refresh.className = 'secondary';
+          refresh.textContent = 'Обновить даты'; refresh.onclick = () => location.reload(); status.append(refresh);
+        }
       });
       return;
     }
-    let currentPage = Number(location.pathname.match(/\/page\/(\d+)\//)?.[1] || 1);
-    let nextPage = data.pages.find(page => Number(page.name) === currentPage + 1)?.url || null;
+    const searchParams = new URLSearchParams(location.search);
+    let currentPage = isSearch ? Math.max(1, Number(searchParams.get('search_start')) || 1) : Number(location.pathname.match(/\/page\/(\d+)\//)?.[1] || 1);
+    const searchUrl = page => { const params = new URLSearchParams(searchParams); params.set('search_start', page); params.set('result_from', (page - 1) * 10 + 1); return `${location.origin}/index.php?${params}`; };
+    let nextPage = data.pages.some(page => Number(page.name) === currentPage + 1) ? (isSearch ? searchUrl(currentPage + 1) : data.pages.find(page => Number(page.name) === currentPage + 1).url) : null;
     let loading = false;
     const sentinel = document.createElement('div'); sentinel.className = 'catalog-sentinel'; grid.after(sentinel);
     const loadPage = async () => {
       if (loading || !nextPage) return;
       loading = true; root.querySelector('#catalog-status').textContent = 'Загружаем ещё…';
       try {
-        const html = await getPage(nextPage);
-        const newItems = cardsFromHtml(html);
+        const pageUrl = nextPage;
+        const html = await getPage(pageUrl);
+        const newItems = cardsFromHtml(html, pageUrl);
         const doc = new DOMParser().parseFromString(html, 'text/html');
         currentPage++;
-        const next = [...doc.querySelectorAll('.block_4 a')].find(a => Number(a.textContent.trim()) === currentPage + 1 && a.getAttribute('href') !== '#');
-        nextPage = next ? new URL(next.getAttribute('href'), location.href).href : null;
+        const next = [...doc.querySelectorAll('.block_4 a')].find(a => Number(a.textContent.trim()) === currentPage + 1 && (isSearch || a.getAttribute('href') !== '#'));
+        nextPage = next ? (isSearch ? searchUrl(currentPage + 1) : new URL(next.getAttribute('href'), pageUrl).href) : null;
         const known = new Set([...grid.querySelectorAll('.card')].map(card => card.href));
         newItems.filter(item => !known.has(item.url)).forEach(item => grid.insertAdjacentHTML('beforeend', cards([item])));
         grid.querySelectorAll('.download-icon').forEach(element => element.replaceWith(makeIcon('download')));
@@ -256,7 +281,7 @@
       } catch (error) { root.querySelector('#catalog-status').textContent = `${error.message}. Обновите страницу, чтобы повторить.`; } finally { loading = false; }
       if (nextPage && sentinel.getBoundingClientRect().top < innerHeight + 500 && !root.querySelector('#catalog-status').textContent) loadPage();
     };
-    if (!latestMode && !isSearch) {
+    if (!latestMode) {
       const pageObserver = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) loadPage(); }, { rootMargin: '500px' });
       pageObserver.observe(sentinel);
     } else {
@@ -308,17 +333,14 @@
     root.querySelector('#download-all').prepend(makeIcon('download'));
     root.querySelectorAll('.download-icon').forEach(element => element.replaceWith(makeIcon('download')));
     const resolve = async (episode) => {
-      // getlink.php отдаёт устаревший roomfish URL. Штатный frame5 выбирает актуальный сервер.
-      const response = await fetch(`${location.origin}/frame5.php?play=${episode.id}&old=1`, { credentials: 'include' });
-      if (!response.ok) throw new Error('Сайт не предоставил плеер серии');
-      const html = await response.text();
+      const html = await requestText(`${location.origin}/frame5.php?play=${episode.id}&old=1`);
       const doc = new DOMParser().parseFromString(html, 'text/html');
       const links = [...doc.querySelectorAll('a[download][href*=".mp4"]')].map(a => a.href);
       const url = links.find(x => /720\//.test(x)) || links.find(x => /\.mp4/.test(x));
       if (!url) throw new Error('Рабочая ссылка на видео не найдена');
       return { url, name: `${x.name} - ${episode.name.replace(/[^\d]+/, '').padStart(2, '0')}` };
     };
-    root.querySelectorAll('[data-episode]').forEach(btn => btn.onclick = async event => { event.stopPropagation(); try { const item = await resolve(x.episodes[btn.dataset.episode]); await chrome.runtime.sendMessage({ type: 'download', item: { url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` } }); btn.textContent = '✓'; btn.title = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } });
+    root.querySelectorAll('[data-episode]').forEach(btn => btn.onclick = async event => { event.stopPropagation(); try { const item = await resolve(x.episodes[btn.dataset.episode]); const result = await chrome.runtime.sendMessage({ type: 'download', item: { url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` } }); if (!result?.accepted) throw new Error(result?.failures?.[0]?.error || 'Загрузка не создана'); btn.textContent = '✓'; btn.title = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } });
     let playerRequest = 0;
     const player = root.querySelector('#player');
     async function showEpisode(index) {
@@ -346,11 +368,26 @@
     });
     if (x.episodes.length) showEpisode(0);
     else player.innerHTML = '<div class="player-placeholder">Список серий недоступен.</div>';
-    root.querySelector('#download-all').onclick = async () => { if (!x.episodes.length || !confirm(`Скачать серий: ${x.episodes.length}?`)) return; try { const items = []; for (const e of x.episodes) { const item = await resolve(e); items.push({ url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` }); } await chrome.runtime.sendMessage({ type: 'downloadMany', items }); root.querySelector('#download-all').textContent = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } };
+    root.querySelector('#download-all').onclick = async () => {
+      if (!x.episodes.length || !confirm(`Скачать серий: ${x.episodes.length}?`)) return;
+      const button = root.querySelector('#download-all'); button.disabled = true;
+      const items = []; const failures = [];
+      try {
+        for (const episode of x.episodes) {
+          button.textContent = `Подготовка ${items.length + failures.length + 1}/${x.episodes.length}`;
+          try { const item = await resolve(episode); items.push({ url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` }); }
+          catch { failures.push(episode.name); }
+        }
+        const result = await chrome.runtime.sendMessage({ type: 'downloadMany', items });
+        button.textContent = `Принято: ${result.accepted}`;
+        button.title = `Ошибок: ${failures.length + result.failures.length}`;
+      } catch (error) { button.textContent = 'Повторить загрузку'; button.title = error.message; }
+      finally { button.disabled = false; }
+    };
     root.querySelector('#toggle-episodes').onclick = () => { const panel = root.querySelector('.episode-panel'); const hidden = panel.classList.toggle('collapsed'); root.querySelector('#toggle-episodes span').textContent = hidden ? 'Показать серии' : 'Скрыть'; root.querySelector('#toggle-episodes').title = hidden ? 'Показать список серий' : 'Скрыть список серий'; };
     const episodeRail = root.querySelector('.episode-panel .episodes');
     episodeRail.addEventListener('wheel', event => {
-      if (!app.classList.contains('cinema-mode') || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      if (!app.classList.contains('cinema-mode') || event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
       const maxScroll = episodeRail.scrollWidth - episodeRail.clientWidth;
       if (maxScroll <= 0) return;
       const next = Math.max(0, Math.min(maxScroll, episodeRail.scrollLeft + event.deltaY));
@@ -373,6 +410,9 @@
     root.addEventListener('focusin', revealCinemaControls);
     panel.addEventListener('pointerleave', revealCinemaControls);
     panel.addEventListener('focusout', revealCinemaControls);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && app.classList.contains('cinema-mode')) root.querySelector('#cinema').click();
+    });
     root.querySelector('#cinema').onclick = () => {
       const active = app.classList.toggle('cinema-mode');
       root.querySelector('#cinema').querySelector('span:last-child').textContent = active ? 'Выйти' : 'Кинотеатр';

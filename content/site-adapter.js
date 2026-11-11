@@ -7,7 +7,9 @@
     currentType() {
       if (document.querySelector('#dle-content .shortstoryHead h1, .fullstory')) return 'title';
       if (location.pathname.includes('search') || location.search.includes('do=search')) return 'search';
-      return 'listing';
+      if (location.search && new URLSearchParams(location.search).has('do')) return 'unsupported';
+      if (document.querySelector('#dle-content .shortstoryHead a')) return 'listing';
+      return 'unsupported';
     },
     title() {
       const root = document.querySelector('.fullstory, #dle-content');
