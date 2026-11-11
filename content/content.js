@@ -132,6 +132,16 @@
     else player.innerHTML = '<div class="player-placeholder">Список серий недоступен.</div>';
     root.querySelector('#download-all').onclick = async () => { if (!x.episodes.length || !confirm(`Скачать серий: ${x.episodes.length}?`)) return; try { const items = []; for (const e of x.episodes) { const item = await resolve(e); items.push({ url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` }); } await chrome.runtime.sendMessage({ type: 'downloadMany', items }); root.querySelector('#download-all').textContent = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } };
     root.querySelector('#toggle-episodes').onclick = () => { const panel = root.querySelector('.episode-panel'); const hidden = panel.classList.toggle('collapsed'); root.querySelector('#toggle-episodes').textContent = hidden ? 'Показать серии' : 'Скрыть'; root.querySelector('#toggle-episodes').title = hidden ? 'Показать список серий' : 'Скрыть список серий'; };
+    const episodeRail = root.querySelector('.episode-panel .episodes');
+    episodeRail.addEventListener('wheel', event => {
+      if (!app.classList.contains('cinema-mode') || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      const maxScroll = episodeRail.scrollWidth - episodeRail.clientWidth;
+      if (maxScroll <= 0) return;
+      const next = Math.max(0, Math.min(maxScroll, episodeRail.scrollLeft + event.deltaY));
+      if (next === episodeRail.scrollLeft) return;
+      event.preventDefault();
+      episodeRail.scrollLeft = next;
+    }, { passive: false });
     let hideTimer;
     const panel = root.querySelector('.episode-panel');
     function revealCinemaControls() {
