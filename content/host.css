@@ -1,4 +1,7 @@
-html, body { margin: 0 !important; padding: 0 !important; min-height: 100%; background: #0b0d12 !important; }
-body > :not(#vost-clean-host) { display: none !important; }
+html.vost-loading { background: #0b0d12 !important; }
+html.vost-loading-light { background: #f4f6fb !important; }
+html.vost-loading body { visibility: hidden !important; }
+html.vost-active, html.vost-active body { margin: 0 !important; padding: 0 !important; min-height: 100%; background: #0b0d12 !important; }
+html.vost-active body > :not(#vost-clean-host) { display: none !important; }
 #vost-clean-host { display: block !important; min-height: 100vh; }
 html.vost-cinema-open { overflow: hidden !important; }

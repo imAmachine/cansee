@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  try {
   const A = window.VostAdapter;
   const type = A.currentType();
   const data = type === 'title' ? A.title() : { latest: A.latest(), cards: A.cards(), pages: A.pages() };
@@ -51,10 +52,9 @@
   const app = document.createElement('main');
   app.id = 'vost-app';
   root.append(app);
-  document.body.replaceChildren(host);
-  fetch(chrome.runtime.getURL('content/content.css')).then(r => r.text()).then(css => {
-    const style = document.createElement('style'); style.textContent = css; root.prepend(style);
-  });
+  const response = await fetch(chrome.runtime.getURL('content/content.css'));
+  if (!response.ok) throw new Error('Не удалось загрузить стили расширения');
+  const style = document.createElement('style'); style.textContent = await response.text(); root.prepend(style);
 
   function shell(content, active = '', options = {}) {
     const viewToggle = options.view ? '<button id="view-toggle" class="view-toggle" title="Переключить вид" aria-label="Переключить вид"></button>' : '';
@@ -278,4 +278,11 @@
   }
   function safe(s) { return s.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, 150); }
   type === 'title' ? title() : listing();
+  document.body.replaceChildren(host);
+  document.documentElement.classList.add('vost-active');
+  document.documentElement.classList.remove('vost-loading', 'vost-loading-light');
+  } catch (error) {
+    document.documentElement.classList.remove('vost-loading', 'vost-loading-light');
+    console.error('Vost Clean: не удалось загрузить интерфейс', error);
+  }
 })();

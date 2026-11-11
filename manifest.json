@@ -1,15 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Vost Clean",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Минималистичный интерфейс для animevost.org и его зеркал.",
   "permissions": ["downloads", "storage"],
   "host_permissions": ["https://animevost.org/*", "https://*.vost.pw/*", "https://*.roomfish.ru/*", "https://*.tigerlips.org/*", "https://*.trn.su/*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "content_scripts": [{
     "matches": ["https://animevost.org/*", "https://*.vost.pw/*"],
-    "js": ["content/site-adapter.js", "content/content.js"],
+    "js": ["content/bootstrap.js"],
     "css": ["content/host.css"],
+    "run_at": "document_start"
+  }, {
+    "matches": ["https://animevost.org/*", "https://*.vost.pw/*"],
+    "js": ["content/site-adapter.js", "content/content.js"],
     "run_at": "document_idle"
   }],
   "action": { "default_title": "Vost Clean" },
