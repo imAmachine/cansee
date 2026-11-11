@@ -168,10 +168,14 @@ header { height:64px; gap:28px; }
 .episode-panel-head { margin-bottom:8px; }
 .download-all { margin-top:8px; }
 .title-head { gap:28px; }
+.title-head > div { height:100%; display:flex; flex-direction:column; }
+.title-head > div > p:last-child { flex:1 1 auto; min-height:0; max-height:none; margin-bottom:0; overflow-y:auto; overflow-x:hidden; }
 @media (max-width:700px) {
   header { height:60px; }
   .content { padding:14px 14px 40px; }
   .title-head { gap:14px; }
   .title-head img { height:145px; }
+  .title-head > div { height:auto; display:block; }
+  .title-head > div > p:last-child { max-height:260px; }
   .section-title { margin-top:20px; }
 }
