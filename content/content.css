@@ -110,6 +110,14 @@ header { background:var(--bg) }
   #vost-app.cinema-mode .episode-panel { left:50%; right:auto; top:10px; bottom:auto; width:calc(100vw - 20px); }
 }
 
+/* Keep the theatre toolbar on one line; only the episode rail scrolls. */
+#vost-app.cinema-mode .episode-panel { display:flex; align-items:center; gap:8px; max-height:none; padding:8px; }
+#vost-app.cinema-mode .episode-panel-head { flex:0 0 auto; margin:0; }
+#vost-app.cinema-mode .episode-panel-head h2 { display:none; }
+#vost-app.cinema-mode .episode-panel .episodes { flex:1 1 auto; min-width:0; padding:0; gap:6px; }
+#vost-app.cinema-mode .download-all { flex:0 0 auto; margin:0; white-space:nowrap; }
+#vost-app.cinema-mode .episode-panel.collapsed { width:auto; max-width:calc(100vw - 28px); }
+
 /* Keep page content close to the navigation without crowding sections. */
 .content { padding-top: 24px; }
 .hero { padding-top: 0; padding-bottom: 12px; }
