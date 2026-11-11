@@ -9,6 +9,8 @@ header { background:var(--bg) }
 .theme { width:40px; height:40px; padding:0; border:0; background:transparent; color:var(--text); font-size:24px; line-height:1; }
 .view-toggle { width:36px; height:36px; padding:0; border:0; background:transparent; color:var(--muted); font-size:23px; line-height:1; }
 .view-toggle:hover { color:var(--text); }
+.theme svg, .view-toggle svg, form#search button svg, .card-download-all svg { width:18px; height:18px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.theme, .view-toggle { display:inline-flex; align-items:center; justify-content:center; }
 .latest { grid-template-columns:1fr; gap:1px }
 .latest a.latest-item { display:grid; grid-template-columns:32px 1fr auto; align-items:center; gap:12px; white-space:normal }
 .latest-item b { color:var(--accent); font-size:12px }
@@ -148,7 +150,7 @@ header { background:var(--bg) }
 .main-column[data-view="list"] .card strong { -webkit-line-clamp:1; }
 .main-column[data-view="list"] .card small { max-height:42px; }
 @media (max-width:700px) { .main-column[data-view="list"] .card { grid-template-columns:112px minmax(0,1fr); min-height:140px; } .main-column[data-view="list"] .card img, .main-column[data-view="list"] .card .poster { width:112px; height:140px; } }
-.card-download-all { margin-top:10px; padding:6px 9px; border:1px solid var(--line); border-radius:7px; background:var(--panel2); color:var(--text); font-size:12px; }
+.card-download-all { margin-top:10px; padding:6px 9px; border:1px solid var(--line); border-radius:7px; background:var(--panel2); color:var(--text); font-size:12px; display:inline-flex; align-items:center; gap:5px; }
 .card-download-all:hover { border-color:var(--accent); color:var(--accent); }
 .card-download-all:disabled { opacity:.65; cursor:wait; }
 .main-column[data-view="grid"] .card-download-all { display:none; }
