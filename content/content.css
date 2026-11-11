@@ -241,3 +241,67 @@ header { height:64px; gap:28px; }
   #vost-app:not(.cinema-mode) .watch-layout:has(.episode-panel.collapsed) { grid-template-columns:max-content minmax(0,1fr); }
   #vost-app:not(.cinema-mode) .episode-panel.collapsed { height:auto; align-self:start; }
 }
+
+/* Quiet geometric texture: CSS only, no image/font requests or animation. */
+#vost-app {
+  --pattern:rgba(155,140,255,.055);
+  --glow:rgba(129,108,255,.10);
+  --shadow:0 4px 18px rgba(0,0,0,.12);
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(ellipse 700px 460px at 0 160px, var(--glow), transparent 75%),
+    radial-gradient(ellipse 600px 500px at 100% 720px, var(--glow), transparent 75%),
+    repeating-linear-gradient(45deg, transparent 0 39px, var(--pattern) 40px, transparent 41px 80px);
+}
+#vost-app[data-theme="light"] {
+  --pattern:rgba(101,85,216,.035);
+  --glow:rgba(101,85,216,.06);
+  --shadow:0 4px 18px rgba(34,43,72,.05);
+}
+header { box-shadow:0 1px 0 var(--line); border-bottom:0; gap:20px; }
+nav { align-items:center; gap:6px; }
+nav a { padding:7px 12px; border-radius:8px; font-weight:600; transition:background .15s, color .15s; }
+nav a:hover { background:var(--panel2); }
+nav a.active { background:var(--panel2); color:var(--accent); box-shadow:inset 0 -2px var(--accent); }
+form#search { transition:border-color .15s; }
+form#search:focus-within { border-color:var(--accent); }
+form#search input { min-width:0; }
+form#search input::placeholder { color:var(--muted); }
+form#search button { display:flex; align-items:center; justify-content:center; padding:8px 12px; }
+.theme, .view-toggle { border-radius:9px; flex-shrink:0; transition:color .15s, background .15s; }
+.theme:hover, .view-toggle:hover { background:var(--panel2); color:var(--accent); }
+.theme svg { width:22px; height:22px; }
+.hero h1 { font-size:clamp(26px,3vw,38px); letter-spacing:-.035em; line-height:1.15; margin:0 0 8px; }
+.hero { padding-bottom:4px; }
+.section-title { margin:16px 0 12px; }
+.section-title > span { font-size:12px; }
+.date-group h3 { display:flex; align-items:center; gap:12px; font-size:13px; margin:0 0 12px; }
+.date-group h3::after { content:''; height:1px; background:var(--line); flex:1; }
+.card { box-shadow:var(--shadow); border-radius:12px; }
+.card:hover { transform:translateY(-2px); }
+.main-column[data-view="list"] .card { border-radius:10px; }
+.main-column[data-view="list"] .card:hover { transform:translateX(2px); }
+.card strong { font-weight:650; }
+.card small:empty { display:none; }
+.card-download-all { transition:color .15s, border-color .15s, background .15s; }
+.title-head img { box-shadow:var(--shadow); border:1px solid var(--line); }
+.title-meta { line-height:1.6; }
+.episode-panel { box-shadow:var(--shadow); }
+.episode-panel .episode { border-radius:7px; }
+.episode.selected { background:var(--panel2); }
+.episode-controls button, .download-all { border-radius:7px; }
+button:disabled { opacity:.55; cursor:wait; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+form#search input:focus-visible { outline:0; }
+#vost-app.cinema-mode { background-image:none; }
+@media(max-width:700px) {
+  header { gap:8px; }
+  form#search { min-width:0; flex:1; }
+  form#search input { width:100%; }
+  .brand { font-size:15px; letter-spacing:.03em; }
+  .theme, .view-toggle { width:30px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .card, nav a, .theme, .view-toggle { transition:none; }
+  .card:hover, .main-column[data-view="list"] .card:hover { transform:none; }
+}
