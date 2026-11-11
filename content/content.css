@@ -111,11 +111,13 @@ header { background:var(--bg) }
 }
 
 /* Keep the theatre toolbar on one line; only the episode rail scrolls. */
-#vost-app.cinema-mode .episode-panel { display:flex; align-items:center; gap:8px; max-height:none; padding:8px; }
-#vost-app.cinema-mode .episode-panel-head { flex:0 0 auto; margin:0; }
+#vost-app.cinema-mode .episode-panel { display:flex; align-items:center; gap:6px; max-height:none; padding:5px 6px; }
+#vost-app.cinema-mode .episode-panel-head { flex:0 0 auto; order:3; margin:0; }
 #vost-app.cinema-mode .episode-panel-head h2 { display:none; }
-#vost-app.cinema-mode .episode-panel .episodes { flex:1 1 auto; min-width:0; padding:0; gap:6px; }
-#vost-app.cinema-mode .download-all { flex:0 0 auto; margin:0; white-space:nowrap; }
+#vost-app.cinema-mode .episode-panel .episodes { order:1; flex:1 1 auto; min-width:0; padding:2px; gap:4px; }
+#vost-app.cinema-mode .download-all { order:2; flex:0 0 auto; margin:0; white-space:nowrap; }
+#vost-app.cinema-mode .episode-controls { gap:4px; }
+#vost-app.cinema-mode .episode-controls button { padding:6px 8px; line-height:1.2; }
 #vost-app.cinema-mode .episode-panel.collapsed { width:auto; max-width:calc(100vw - 28px); }
 
 /* Keep page content close to the navigation without crowding sections. */

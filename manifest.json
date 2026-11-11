@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vost Clean",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Минималистичный интерфейс для animevost.org и его зеркал.",
   "permissions": ["downloads", "storage"],
   "host_permissions": ["https://animevost.org/*", "https://*.vost.pw/*", "https://*.roomfish.ru/*", "https://*.tigerlips.org/*", "https://*.trn.su/*"],
