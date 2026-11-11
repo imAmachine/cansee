@@ -3,6 +3,11 @@
   const type = A.currentType();
   const data = type === 'title' ? A.title() : { latest: A.latest(), cards: A.cards(), pages: A.pages() };
   const esc = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[c]));
+  const COVER_CACHE_KEY = 'vost-cover-cache-v1';
+  const COVER_TTL = 24 * 60 * 60 * 1000;
+  function readCoverCache() { try { return JSON.parse(localStorage.getItem(COVER_CACHE_KEY) || '{}'); } catch { return {}; } }
+  function cachedCover(url) { const item = readCoverCache()[url]; return item && Date.now() - item.time < COVER_TTL ? item.src : ''; }
+  function saveCover(url, src) { try { const cache = readCoverCache(); cache[url] = { src, time: Date.now() }; localStorage.setItem(COVER_CACHE_KEY, JSON.stringify(cache)); } catch {} }
   const host = document.createElement('div');
   host.id = 'vost-clean-host';
   const root = host.attachShadow({ mode: 'open' });
@@ -37,9 +42,9 @@
     return `<div class="grid">${items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small></div></a>`).join('')}</div>`;
   }
   function listing() {
-    const latest = data.latest.map(item => ({ ...item, poster: data.cards.find(card => card.url === item.url)?.poster || '' })); const items = data.cards;
+    const latest = data.latest.map(item => ({ ...item, poster: data.cards.find(card => card.url === item.url)?.poster || cachedCover(item.url) })); const items = data.cards;
     const isSearch = location.search.includes('do=search');
-    const recent = latest.length ? `<aside class="sidebar"><details open><summary>Последние обновления <span>${latest.length}</span></summary><div class="latest">${latest.map((x, i) => `<a class="latest-item" title="${esc(x.name)}" href="${esc(x.url)}"><b>${String(i + 1).padStart(2, '0')}</b>${x.poster ? `<img class="latest-poster" src="${esc(x.poster)}" alt="" loading="lazy">` : '<span class="latest-poster placeholder" aria-hidden="true"></span>'}<span>${esc(x.name)}</span></a>`).join('')}</div></details></aside>` : '';
+    const recent = latest.length ? `<aside class="sidebar"><details open><summary>Последние обновления <span>${latest.length}</span></summary><div class="latest">${latest.map((x, i) => `<a class="latest-item" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img class="latest-backdrop" src="${esc(x.poster)}" alt="" aria-hidden="true"><img class="latest-poster" src="${esc(x.poster)}" alt="" loading="lazy">` : '<span class="latest-poster placeholder" aria-hidden="true"></span>'}<span class="latest-index">${String(i + 1).padStart(2, '0')}</span><span class="latest-name">${esc(x.name)}</span></a>`).join('')}</div></details></aside>` : '';
     shell(`<div class="layout">${recent}<section class="main-column"><div class="hero"><p class="eyebrow">ANIMEVOST / CLEAN CLIENT</p><h1>${isSearch ? 'Результаты поиска' : 'Аниме без лишнего шума'}</h1><p>${isSearch ? `По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»` : 'Каталог, последние обновления и быстрый доступ к сериям.'}</p></div>
       <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : 'Каталог'}</h2><span>${items.length} на странице</span></div>${items.length ? cards(items) : '<div class="empty">Ничего не найдено. Проверьте запрос и попробуйте ещё раз.</div>'}<div class="pages">${data.pages.map(x => `<a href="${esc(x.url)}">${esc(x.name)}</a>`).join('')}</div></section></div>`, isSearch ? '' : 'latest');
     const sidebar = root.querySelector('.sidebar .latest');
@@ -63,6 +68,10 @@
             const image = document.createElement('img');
             image.className = 'latest-poster'; image.alt = ''; image.loading = 'lazy';
             image.src = new URL(src, url.href).href;
+            saveCover(url.href, image.src);
+            const link = placeholder.closest('a');
+            const backdrop = document.createElement('img'); backdrop.className = 'latest-backdrop'; backdrop.alt = ''; backdrop.setAttribute('aria-hidden', 'true'); backdrop.src = image.src;
+            link.insertBefore(backdrop, link.firstChild);
             placeholder.replaceWith(image);
           }).catch(() => {}).finally(() => { active--; loadNext(); });
         }
