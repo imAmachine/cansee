@@ -166,10 +166,12 @@
         });
         groups.replaceChildren(fragment);
       }
-      renderGroups();
+      const status = root.querySelector('#catalog-status');
+      status.textContent = 'Загружаем даты обновлений…';
       let cursor = 0;
+      let finished = false;
       async function loadDetails() {
-        while (cursor < items.length) {
+        while (!finished && cursor < items.length) {
           const index = cursor++; const item = items[index];
           if (dateKey(item.date || '') && item.poster) continue;
           try {
@@ -183,11 +185,18 @@
               const placeholder = elements[index].querySelector('.poster');
               if (placeholder) { const image = document.createElement('img'); image.src = item.poster; image.alt = ''; image.loading = 'lazy'; placeholder.replaceWith(image); }
             }
-            if (dateKey(date)) { item.date = date; renderGroups(); }
+            if (!finished && dateKey(date)) item.date = date;
           } catch { /* Keep the title in the undated group. */ }
         }
       }
-      loadDetails(); loadDetails();
+      let timer;
+      const timeout = new Promise(resolve => { timer = setTimeout(resolve, 5000); });
+      Promise.race([Promise.all([loadDetails(), loadDetails()]), timeout]).then(() => {
+        finished = true;
+        clearTimeout(timer);
+        renderGroups();
+        status.textContent = '';
+      });
       return;
     }
     let currentPage = Number(location.pathname.match(/\/page\/(\d+)\//)?.[1] || 1);
