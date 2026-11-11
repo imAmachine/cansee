@@ -191,6 +191,10 @@
       status.textContent = 'Загружаем даты обновлений…';
       let cursor = 0;
       let finished = false;
+      let remainingDates = items.filter(item => !dateKey(item.date || '')).length;
+      let resolveDates;
+      const datesReady = new Promise(resolve => { resolveDates = resolve; });
+      if (!remainingDates) resolveDates();
       async function loadDetails() {
         while (cursor < items.length) {
           const index = cursor++; const item = items[index];
@@ -208,15 +212,19 @@
             if (src && !item.poster) {
               item.poster = poster; saveCover(url.href, item.poster);
               const placeholder = elements[index].querySelector('.poster');
-              if (!finished && placeholder) { const image = document.createElement('img'); image.src = item.poster; image.alt = ''; image.loading = 'lazy'; placeholder.replaceWith(image); }
+              if (placeholder) { const image = document.createElement('img'); image.src = item.poster; image.alt = ''; image.loading = 'lazy'; placeholder.replaceWith(image); }
             }
-            if (!finished && dateKey(date)) item.date = date;
+            if (dateKey(date) && !dateKey(item.date || '')) {
+              if (!finished) item.date = date;
+              if (--remainingDates === 0) resolveDates();
+            }
           } catch { /* Keep the title in the undated group. */ }
         }
       }
       let timer;
       const timeout = new Promise(resolve => { timer = setTimeout(resolve, 5000); });
-      Promise.race([Promise.all([loadDetails(), loadDetails()]), timeout]).then(() => {
+      const workers = Promise.all([loadDetails(), loadDetails()]);
+      Promise.race([datesReady, workers, timeout]).then(() => {
         finished = true;
         clearTimeout(timer);
         renderGroups();
