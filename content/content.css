@@ -14,3 +14,16 @@ header { background:var(--bg) }
 .latest-item i { color:var(--muted); font-style:normal; font-size:12px }
 .latest a.latest-item:hover { background:var(--panel2) }
 @media(max-width:700px) { .latest a.latest-item { grid-template-columns:26px 1fr } .latest-item i { display:none } }
+.layout { display:grid; grid-template-columns:260px minmax(0,1fr); gap:34px; align-items:start }
+.main-column { min-width:0 }
+.sidebar { position:sticky; top:92px; max-height:calc(100vh - 116px); overflow:auto }
+.sidebar details { background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden }
+.sidebar summary { cursor:pointer; list-style:none; padding:14px 15px; font-weight:700; display:flex; justify-content:space-between; gap:10px }
+.sidebar summary::-webkit-details-marker { display:none }
+.sidebar summary::after { content:'+'; color:var(--muted) }
+.sidebar details[open] summary::after { content:'−' }
+.sidebar summary span { color:var(--muted); font-weight:400 }
+.sidebar .latest { border:0; border-top:1px solid var(--line); border-radius:0; max-height:calc(100vh - 180px); overflow:auto }
+.sidebar .latest-item { padding:10px 12px; grid-template-columns:25px 1fr; font-size:12px; line-height:1.35 }
+.empty { padding:35px; background:var(--panel); color:var(--muted); border:1px solid var(--line); border-radius:10px; text-align:center }
+@media(max-width:850px) { .layout { display:block } .sidebar { position:static; max-height:none; margin-bottom:28px } .sidebar .latest { max-height:300px } }

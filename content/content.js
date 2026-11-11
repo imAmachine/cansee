@@ -20,8 +20,12 @@
       <a class="${active === 'catalog' ? 'active' : ''}" href="${location.origin}/page/2/">Каталог</a>
     </nav><form id="search"><input name="story" placeholder="Найти тайтл…" autocomplete="off"><button>Поиск</button></form><button id="theme" class="theme" title="Сменить тему">☀</button></header><section class="content">${content}</section>`;
     root.querySelector('#search').addEventListener('submit', e => {
-      e.preventDefault(); const value = new FormData(e.currentTarget).get('story');
-      if (value) location.href = `${location.origin}/index.php?do=search&subaction=search&story=${encodeURIComponent(value)}`;
+      e.preventDefault(); const value = String(new FormData(e.currentTarget).get('story') || '').trim();
+      if (value) {
+        const url = new URL('/index.php', location.origin);
+        url.search = new URLSearchParams({ do: 'search', subaction: 'search', story: value });
+        location.assign(url.href);
+      }
     });
     const theme = root.querySelector('#theme');
     const current = localStorage.getItem('vost-theme') || 'dark';
@@ -34,9 +38,10 @@
   }
   function listing() {
     const latest = data.latest; const items = data.cards;
-    shell(`<div class="hero"><p class="eyebrow">ANIMEVOST / CLEAN CLIENT</p><h1>Аниме без лишнего шума</h1><p>Каталог, последние обновления и быстрый доступ к сериям.</p></div>
-      <div class="section-title"><h2>Последние обновления</h2><span>${latest.length} тайтлов</span></div><div class="latest">${latest.map((x, i) => `<a class="latest-item" href="${esc(x.url)}"><b>${String(i + 1).padStart(2, '0')}</b><span>${esc(x.name)}</span><i>Открыть →</i></a>`).join('')}</div>
-      <div class="section-title"><h2>Каталог</h2></div>${cards(items)}<div class="pages">${data.pages.map(x => `<a href="${esc(x.url)}">${esc(x.name)}</a>`).join('')}</div>`, 'latest');
+    const isSearch = location.search.includes('do=search');
+    const recent = latest.length ? `<aside class="sidebar"><details open><summary>Последние обновления <span>${latest.length}</span></summary><div class="latest">${latest.map((x, i) => `<a class="latest-item" href="${esc(x.url)}"><b>${String(i + 1).padStart(2, '0')}</b><span>${esc(x.name)}</span></a>`).join('')}</div></details></aside>` : '';
+    shell(`<div class="layout">${recent}<section class="main-column"><div class="hero"><p class="eyebrow">ANIMEVOST / CLEAN CLIENT</p><h1>${isSearch ? 'Результаты поиска' : 'Аниме без лишнего шума'}</h1><p>${isSearch ? `По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»` : 'Каталог, последние обновления и быстрый доступ к сериям.'}</p></div>
+      <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : 'Каталог'}</h2><span>${items.length} на странице</span></div>${items.length ? cards(items) : '<div class="empty">Ничего не найдено. Проверьте запрос и попробуйте ещё раз.</div>'}<div class="pages">${data.pages.map(x => `<a href="${esc(x.url)}">${esc(x.name)}</a>`).join('')}</div></section></div>`, isSearch ? '' : 'latest');
   }
   function title() {
     const x = data;
