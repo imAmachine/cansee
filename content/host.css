@@ -1,3 +1,4 @@
 html, body { margin: 0 !important; padding: 0 !important; min-height: 100%; background: #0b0d12 !important; }
 body > :not(#vost-clean-host) { display: none !important; }
 #vost-clean-host { display: block !important; min-height: 100vh; }
+html.vost-cinema-open { overflow: hidden !important; }
