@@ -38,7 +38,7 @@
       }).filter(Boolean);
     },
     latest() {
-      return [...document.querySelectorAll('.raspis a')].map(a => ({ name: clean(a.textContent), url: absolute(a.href) }));
+      return [...document.querySelectorAll('.raspis_fixed a')].map(a => ({ name: clean(a.textContent), url: absolute(a.href) }));
     },
     pages() {
       return [...document.querySelectorAll('.block_4 a')].map(a => ({ name: clean(a.textContent), url: absolute(a.href) }));

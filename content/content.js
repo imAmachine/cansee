@@ -138,7 +138,9 @@
     const view = localStorage.getItem('vost-view') || 'grid';
     root.querySelector('.main-column').dataset.view = view;
     root.querySelectorAll('.download-icon').forEach(element => element.replaceWith(makeIcon('download')));
-    root.querySelectorAll('[data-download-all]').forEach(button => button.addEventListener('click', async event => {
+    root.querySelector('.listing-page').addEventListener('click', async event => {
+      const button = event.target.closest('[data-download-all]');
+      if (!button) return;
       event.preventDefault(); event.stopPropagation();
       const original = button.textContent; button.disabled = true; button.textContent = 'Загрузка…';
       try {
@@ -148,7 +150,7 @@
         button.textContent = `✓ ${links.length}`;
       } catch (error) { button.textContent = 'Ошибка'; button.title = error.message; }
       finally { setTimeout(() => { button.disabled = false; if (button.textContent === 'Ошибка') button.textContent = original; }, 2500); }
-    }));
+    });
     const grid = root.querySelector('#catalog-grid');
     if (latestMode) {
       const elements = [...grid.children];
@@ -248,6 +250,7 @@
         nextPage = next ? new URL(next.getAttribute('href'), location.href).href : null;
         const known = new Set([...grid.querySelectorAll('.card')].map(card => card.href));
         newItems.filter(item => !known.has(item.url)).forEach(item => grid.insertAdjacentHTML('beforeend', cards([item])));
+        grid.querySelectorAll('.download-icon').forEach(element => element.replaceWith(makeIcon('download')));
         root.querySelector('#items-count').textContent = `${grid.querySelectorAll('.card').length} тайтлов`;
         root.querySelector('#catalog-status').textContent = nextPage ? '' : 'Больше тайтлов нет';
       } catch (error) { root.querySelector('#catalog-status').textContent = `${error.message}. Обновите страницу, чтобы повторить.`; } finally { loading = false; }
