@@ -12,6 +12,26 @@
   function saveCover(url, src) { try { const cache = readCoverCache(); cache[url] = { src, time: Date.now() }; const fresh = Object.fromEntries(Object.entries(cache).filter(([, item]) => Date.now() - item.time < COVER_TTL)); coverCache = fresh; localStorage.setItem(COVER_CACHE_KEY, JSON.stringify(fresh)); } catch {} }
   const PAGE_CACHE_KEY = 'vost-page-cache-v1';
   const PAGE_TTL = 15 * 60 * 1000;
+  const META_CACHE_KEY = 'vost-latest-meta-v1';
+  const META_TTL = 15 * 60 * 1000;
+  let metaCache;
+  function readMetaCache() {
+    if (metaCache) return metaCache;
+    try { const value = JSON.parse(localStorage.getItem(META_CACHE_KEY) || '{}'); metaCache = value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
+    catch { metaCache = {}; }
+    return metaCache;
+  }
+  function cachedMeta(item) {
+    const entry = readMetaCache()[item.url];
+    return entry && entry.name === item.name && Number.isFinite(entry.time) && Date.now() - entry.time >= 0 && Date.now() - entry.time < META_TTL ? entry : null;
+  }
+  function saveMeta(item, date, poster) {
+    const cache = readMetaCache();
+    cache[item.url] = { name: item.name, date, poster, time: Date.now() };
+    const entries = Object.entries(cache).filter(([, value]) => value && Number.isFinite(value.time) && Date.now() - value.time < META_TTL).sort((a, b) => b[1].time - a[1].time).slice(0, 200);
+    metaCache = Object.fromEntries(entries);
+    try { localStorage.setItem(META_CACHE_KEY, JSON.stringify(metaCache)); } catch { /* Storage may be unavailable or full. */ }
+  }
   let pageCache;
   function readPageCache() { if (pageCache) return pageCache; try { pageCache = JSON.parse(localStorage.getItem(PAGE_CACHE_KEY) || '{}'); } catch { pageCache = {}; } return pageCache; }
   async function getPage(url) {
@@ -112,7 +132,7 @@
     const isCatalog = !isSearch && location.pathname !== '/' && !location.pathname.endsWith('/index.php');
     const activeSection = isSearch ? '' : (isCatalog ? 'catalog' : 'latest');
     const latestMode = !isSearch && !isCatalog;
-    const items = latestMode ? data.latest.map(item => { const card = data.cards.find(entry => entry.url === item.url); return { ...item, poster: card?.poster || cachedCover(item.url), date: card?.date || '', info: '' }; }) : data.cards;
+    const items = latestMode ? data.latest.map(item => { const card = data.cards.find(entry => entry.url === item.url); const meta = cachedMeta(item); return { ...item, poster: card?.poster || meta?.poster || cachedCover(item.url), date: card?.date || meta?.date || '', info: '' }; }) : data.cards;
     shell(`<section class="main-column listing-page"><div class="hero"><h1>${isSearch ? 'Результаты поиска' : (isCatalog ? 'Каталог' : 'Последние')}</h1>${isSearch ? `<p>По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»</p>` : ''}</div>
       <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section>`, activeSection, { view: true });
     const view = localStorage.getItem('vost-view') || 'grid';
@@ -144,6 +164,7 @@
         const date = new Date(Number(match[3]), month, Number(match[1]));
         return date.getFullYear() === Number(match[3]) && date.getMonth() === month && date.getDate() === Number(match[1]) ? `${match[3]}-${String(month + 1).padStart(2, '0')}-${match[1].padStart(2, '0')}` : '';
       }
+      items.forEach(item => { const card = data.cards.find(entry => entry.url === item.url); if (card && dateKey(card.date || '')) saveMeta(item, card.date, item.poster || ''); });
       function label(key) {
         if (!key) return 'Дата неизвестна';
         const [year, month, day] = key.split('-').map(Number);
@@ -171,19 +192,23 @@
       let cursor = 0;
       let finished = false;
       async function loadDetails() {
-        while (!finished && cursor < items.length) {
+        while (cursor < items.length) {
           const index = cursor++; const item = items[index];
           if (dateKey(item.date || '') && item.poster) continue;
           try {
             const url = new URL(item.url);
             if (url.origin !== location.origin) continue;
-            const doc = new DOMParser().parseFromString(await getPage(url.href), 'text/html');
+            const response = await fetch(url.href, { credentials: 'same-origin', cache: 'no-store' });
+            if (!response.ok) throw new Error('Ошибка загрузки тайтла');
+            const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
             const date = A.clean(doc.querySelector('#dle-content .staticInfoLeftData')?.textContent);
             const src = doc.querySelector('#dle-content .shortstoryContent img.imgRadius')?.getAttribute('src');
+            const poster = src ? new URL(src, url.href).href : item.poster;
+            if (dateKey(date)) saveMeta(item, date, poster || '');
             if (src && !item.poster) {
-              item.poster = new URL(src, url.href).href; saveCover(url.href, item.poster);
+              item.poster = poster; saveCover(url.href, item.poster);
               const placeholder = elements[index].querySelector('.poster');
-              if (placeholder) { const image = document.createElement('img'); image.src = item.poster; image.alt = ''; image.loading = 'lazy'; placeholder.replaceWith(image); }
+              if (!finished && placeholder) { const image = document.createElement('img'); image.src = item.poster; image.alt = ''; image.loading = 'lazy'; placeholder.replaceWith(image); }
             }
             if (!finished && dateKey(date)) item.date = date;
           } catch { /* Keep the title in the undated group. */ }
