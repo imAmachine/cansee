@@ -342,9 +342,12 @@
     };
     root.querySelectorAll('[data-episode]').forEach(btn => btn.onclick = async event => { event.stopPropagation(); try { const item = await resolve(x.episodes[btn.dataset.episode]); const result = await chrome.runtime.sendMessage({ type: 'download', item: { url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` } }); if (!result?.accepted) throw new Error(result?.failures?.[0]?.error || 'Загрузка не создана'); btn.textContent = '✓'; btn.title = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } });
     let playerRequest = 0;
+    const titleId = location.pathname.match(/\/(\d+)-[^/]+\.html$/)?.[1] || location.pathname;
+    const progressKey = `vost-progress:${titleId}`;
     const player = root.querySelector('#player');
     async function showEpisode(index) {
       const request = ++playerRequest;
+      chrome.storage.local.set({ [progressKey]: { episodeId: x.episodes[index].id, updatedAt: Date.now() } }).catch(error => console.warn('Vost Clean: не удалось сохранить серию', error));
       root.querySelectorAll('[data-watch]').forEach(button => {
         const selected = Number(button.dataset.watch) === index;
         button.closest('.episode').classList.toggle('selected', selected);
@@ -366,8 +369,19 @@
       card.onclick = () => showEpisode(Number(card.dataset.watch));
       card.onkeydown = event => { if (event.target === card && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); showEpisode(Number(card.dataset.watch)); } };
     });
-    if (x.episodes.length) showEpisode(0);
-    else player.innerHTML = '<div class="player-placeholder">Список серий недоступен.</div>';
+    if (x.episodes.length) {
+      player.innerHTML = '<div class="player-placeholder" role="status">Восстанавливаем последнюю серию…</div>';
+      chrome.storage.local.get(progressKey).then(saved => {
+        if (playerRequest) return;
+        const index = x.episodes.findIndex(episode => episode.id === saved[progressKey]?.episodeId);
+        showEpisode(index >= 0 ? index : 0);
+        requestAnimationFrame(() => {
+          const list = root.querySelector('.episodes');
+          const selected = list.querySelector('.selected');
+          if (selected) list.scrollTop = selected.offsetTop - list.offsetTop;
+        });
+      }).catch(() => { if (!playerRequest) showEpisode(0); });
+    } else player.innerHTML = '<div class="player-placeholder">Список серий недоступен.</div>';
     root.querySelector('#download-all').onclick = async () => {
       if (!x.episodes.length || !confirm(`Скачать серий: ${x.episodes.length}?`)) return;
       const button = root.querySelector('#download-all'); button.disabled = true;
