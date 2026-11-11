@@ -46,7 +46,7 @@
   function title() {
     const x = data;
     shell(`<article class="title"><div class="title-head">${x.poster ? `<img src="${esc(x.poster)}">` : ''}<div><p class="eyebrow">${esc(x.type)} · ${esc(x.year)}</p><h1>${esc(x.name)}</h1><p class="muted">${esc(x.genre)} · ${esc(x.count)}</p><p>${esc(x.description)}</p></div></div>
-      <div class="watch-layout"><section class="player-column"><div class="player-tools"><button id="cinema" class="secondary">Режим кинотеатра</button></div><div id="player"></div></section><aside class="episode-panel"><div class="episode-panel-head"><h2>Серии</h2><button id="toggle-episodes" class="secondary" title="Скрыть список серий">Скрыть</button></div><div class="episodes">${x.episodes.map((e, i) => `<div class="episode" data-watch="${i}" role="button" tabindex="0" aria-label="Смотреть ${esc(e.name)}" aria-pressed="false"><span title="${esc(e.name)}">${esc(e.name)}</span><button class="download-episode" data-episode="${i}" title="Скачать ${esc(e.name)}">↓</button></div>`).join('')}</div><button id="download-all" class="secondary download-all">Скачать всё</button></aside></div></article>`);
+      <div class="watch-layout"><section class="player-column"><div id="player"></div></section><aside class="episode-panel"><div class="episode-panel-head"><h2>Серии</h2><div class="episode-controls"><button id="cinema" class="secondary">Кинотеатр</button><button id="toggle-episodes" class="secondary" title="Скрыть список серий">Скрыть</button></div></div><div class="episodes">${x.episodes.map((e, i) => `<div class="episode" data-watch="${i}" role="button" tabindex="0" aria-label="Смотреть ${esc(e.name)}" aria-pressed="false"><span title="${esc(e.name)}">${esc(e.name)}</span><button class="download-episode" data-episode="${i}" title="Скачать ${esc(e.name)}">↓</button></div>`).join('')}</div><button id="download-all" class="secondary download-all">Скачать всё</button></aside></div></article>`);
     const resolve = async (episode) => {
       // getlink.php отдаёт устаревший roomfish URL. Штатный frame5 выбирает актуальный сервер.
       const response = await fetch(`${location.origin}/frame5.php?play=${episode.id}&old=1`, { credentials: 'include' });
@@ -61,7 +61,7 @@
     root.querySelectorAll('[data-episode]').forEach(btn => btn.onclick = async event => { event.stopPropagation(); try { const item = await resolve(x.episodes[btn.dataset.episode]); await chrome.runtime.sendMessage({ type: 'download', item: { url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` } }); btn.textContent = '✓'; btn.title = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } });
     let playerRequest = 0;
     const player = root.querySelector('#player');
-    async function showEpisode(index, autoplay = false) {
+    async function showEpisode(index) {
       const request = ++playerRequest;
       root.querySelectorAll('[data-watch]').forEach(button => {
         const selected = Number(button.dataset.watch) === index;
@@ -74,22 +74,42 @@
         if (request !== playerRequest) return;
         const url = new URL(item.url);
         url.searchParams.delete('d');
-        player.innerHTML = `<video controls playsinline preload="metadata" ${autoplay ? 'autoplay' : ''} src="${esc(url.href)}"></video><p class="muted" id="player-error" hidden>Видео недоступно. Попробуйте другую сеть или штатный плеер сайта.</p>`;
+        player.innerHTML = `<video controls playsinline preload="metadata" src="${esc(url.href)}"></video><p class="muted" id="player-error" hidden>Видео недоступно. Попробуйте другую сеть или штатный плеер сайта.</p>`;
         player.querySelector('video').addEventListener('error', () => { player.querySelector('#player-error').hidden = false; });
-        if (autoplay) player.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch (error) {
         if (request === playerRequest) player.innerHTML = `<div class="player-placeholder" role="alert">Не удалось загрузить серию: ${esc(error.message)}</div>`;
       }
     }
     root.querySelectorAll('.episode[data-watch]').forEach(card => {
-      card.onclick = () => showEpisode(Number(card.dataset.watch), true);
-      card.onkeydown = event => { if (event.target === card && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); showEpisode(Number(card.dataset.watch), true); } };
+      card.onclick = () => showEpisode(Number(card.dataset.watch));
+      card.onkeydown = event => { if (event.target === card && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); showEpisode(Number(card.dataset.watch)); } };
     });
     if (x.episodes.length) showEpisode(0);
     else player.innerHTML = '<div class="player-placeholder">Список серий недоступен.</div>';
     root.querySelector('#download-all').onclick = async () => { if (!x.episodes.length || !confirm(`Скачать серий: ${x.episodes.length}?`)) return; try { const items = []; for (const e of x.episodes) { const item = await resolve(e); items.push({ url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` }); } await chrome.runtime.sendMessage({ type: 'downloadMany', items }); root.querySelector('#download-all').textContent = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } };
     root.querySelector('#toggle-episodes').onclick = () => { const panel = root.querySelector('.episode-panel'); const hidden = panel.classList.toggle('collapsed'); root.querySelector('#toggle-episodes').textContent = hidden ? 'Показать серии' : 'Скрыть'; root.querySelector('#toggle-episodes').title = hidden ? 'Показать список серий' : 'Скрыть список серий'; };
-    root.querySelector('#cinema').onclick = () => { const active = app.classList.toggle('cinema-mode'); root.querySelector('#cinema').textContent = active ? 'Выйти из кинотеатра' : 'Режим кинотеатра'; document.documentElement.classList.toggle('vost-cinema-open', active); };
+    let hideTimer;
+    const panel = root.querySelector('.episode-panel');
+    function revealCinemaControls() {
+      if (!app.classList.contains('cinema-mode')) return;
+      app.classList.remove('cinema-idle');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        if (!panel.matches(':hover') && !panel.contains(root.activeElement)) app.classList.add('cinema-idle');
+      }, 2500);
+    }
+    document.addEventListener('pointermove', revealCinemaControls);
+    document.addEventListener('pointerdown', revealCinemaControls);
+    root.addEventListener('focusin', revealCinemaControls);
+    panel.addEventListener('pointerleave', revealCinemaControls);
+    panel.addEventListener('focusout', revealCinemaControls);
+    root.querySelector('#cinema').onclick = () => {
+      const active = app.classList.toggle('cinema-mode');
+      root.querySelector('#cinema').textContent = active ? 'Выйти' : 'Кинотеатр';
+      document.documentElement.classList.toggle('vost-cinema-open', active);
+      if (active) revealCinemaControls();
+      else { clearTimeout(hideTimer); app.classList.remove('cinema-idle'); }
+    };
   }
   function safe(s) { return s.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim().slice(0, 150); }
   type === 'title' ? title() : listing();

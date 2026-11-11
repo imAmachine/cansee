@@ -86,3 +86,21 @@ header { background:var(--bg) }
 .episode[data-watch]:hover { background:var(--panel2); border-color:var(--accent); }
 .episode[data-watch]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .episode .download-episode { flex:0 0 26px; }
+
+/* Theatre controls form a compact, auto-hiding horizontal overlay. */
+.episode-controls { display:flex; gap:6px; }
+.episode-controls button { padding:7px 9px; white-space:nowrap; font-size:12px; }
+.episode-panel.collapsed .episode-panel-head { justify-content:flex-end; }
+#vost-app.cinema-mode .episode-panel {
+  left:50%; right:auto; top:14px; bottom:auto; transform:translateX(-50%);
+  width:min(900px, calc(100vw - 28px)); max-height:180px;
+  transition:opacity .2s, visibility .2s;
+}
+#vost-app.cinema-mode .episode-panel .episodes { flex-direction:row; overflow-x:auto; overflow-y:hidden; max-height:none; }
+#vost-app.cinema-mode .episode-panel .episode { flex:0 0 auto; width:auto; }
+#vost-app.cinema-mode .download-all { width:auto; margin:8px 0 0; }
+#vost-app.cinema-idle .episode-panel { opacity:0; visibility:hidden; pointer-events:none; }
+#vost-app.cinema-mode .player-column { z-index:5; }
+@media (max-width:900px) {
+  #vost-app.cinema-mode .episode-panel { left:50%; right:auto; top:10px; bottom:auto; width:calc(100vw - 20px); }
+}
