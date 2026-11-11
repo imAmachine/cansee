@@ -112,7 +112,7 @@
     const isCatalog = !isSearch && location.pathname !== '/' && !location.pathname.endsWith('/index.php');
     const activeSection = isSearch ? '' : (isCatalog ? 'catalog' : 'latest');
     const latestMode = !isSearch && !isCatalog;
-    const items = latestMode ? data.latest.map(item => ({ ...item, poster: data.cards.find(card => card.url === item.url)?.poster || cachedCover(item.url), info: '' })) : data.cards;
+    const items = latestMode ? data.latest.map(item => { const card = data.cards.find(entry => entry.url === item.url); return { ...item, poster: card?.poster || cachedCover(item.url), date: card?.date || '', info: '' }; }) : data.cards;
     shell(`<section class="main-column listing-page"><div class="hero"><h1>${isSearch ? 'Результаты поиска' : (isCatalog ? 'Каталог' : 'Последние')}</h1>${isSearch ? `<p>По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»</p>` : ''}</div>
       <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section>`, activeSection, { view: true });
     const view = localStorage.getItem('vost-view') || 'grid';
@@ -130,6 +130,66 @@
       finally { setTimeout(() => { button.disabled = false; if (button.textContent === 'Ошибка') button.textContent = original; }, 2500); }
     }));
     const grid = root.querySelector('#catalog-grid');
+    if (latestMode) {
+      const elements = [...grid.children];
+      const groups = document.createElement('div');
+      groups.className = 'date-groups';
+      grid.replaceWith(groups);
+      const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+      function dateKey(text) {
+        const match = text.toLowerCase().match(/(\d{1,2})\s+([а-яё]+)\s+(\d{4})/u);
+        if (!match) return '';
+        const month = months.findIndex(name => name.slice(0, 3) === match[2].slice(0, 3));
+        if (month < 0) return '';
+        const date = new Date(Number(match[3]), month, Number(match[1]));
+        return date.getFullYear() === Number(match[3]) && date.getMonth() === month && date.getDate() === Number(match[1]) ? `${match[3]}-${String(month + 1).padStart(2, '0')}-${match[1].padStart(2, '0')}` : '';
+      }
+      function label(key) {
+        if (!key) return 'Дата неизвестна';
+        const [year, month, day] = key.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+        if (date.getTime() === today.getTime()) return 'Сегодня';
+        if (date.getTime() === yesterday.getTime()) return 'Вчера';
+        return `${day} ${months[month - 1]} ${year}`;
+      }
+      function renderGroups() {
+        const buckets = new Map();
+        items.forEach((item, index) => { const key = dateKey(item.date || ''); if (!buckets.has(key)) buckets.set(key, []); buckets.get(key).push(elements[index]); });
+        const fragment = document.createDocumentFragment();
+        [...buckets.keys()].sort((a, b) => !a ? 1 : !b ? -1 : b.localeCompare(a)).forEach(key => {
+          const section = document.createElement('section'); section.className = 'date-group';
+          const heading = document.createElement('h3'); heading.textContent = label(key);
+          const container = document.createElement('div'); container.className = 'grid';
+          container.append(...buckets.get(key)); section.append(heading, container); fragment.append(section);
+        });
+        groups.replaceChildren(fragment);
+      }
+      renderGroups();
+      let cursor = 0;
+      async function loadDetails() {
+        while (cursor < items.length) {
+          const index = cursor++; const item = items[index];
+          if (dateKey(item.date || '') && item.poster) continue;
+          try {
+            const url = new URL(item.url);
+            if (url.origin !== location.origin) continue;
+            const doc = new DOMParser().parseFromString(await getPage(url.href), 'text/html');
+            const date = A.clean(doc.querySelector('#dle-content .staticInfoLeftData')?.textContent);
+            const src = doc.querySelector('#dle-content .shortstoryContent img.imgRadius')?.getAttribute('src');
+            if (src && !item.poster) {
+              item.poster = new URL(src, url.href).href; saveCover(url.href, item.poster);
+              const placeholder = elements[index].querySelector('.poster');
+              if (placeholder) { const image = document.createElement('img'); image.src = item.poster; image.alt = ''; image.loading = 'lazy'; placeholder.replaceWith(image); }
+            }
+            if (dateKey(date)) { item.date = date; renderGroups(); }
+          } catch { /* Keep the title in the undated group. */ }
+        }
+      }
+      loadDetails(); loadDetails();
+      return;
+    }
     let currentPage = Number(location.pathname.match(/\/page\/(\d+)\//)?.[1] || 1);
     let nextPage = data.pages.find(page => Number(page.name) === currentPage + 1)?.url || null;
     let loading = false;

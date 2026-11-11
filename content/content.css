@@ -143,6 +143,8 @@ header { background:var(--bg) }
 .latest-item .latest-name { grid-column:2; grid-row:1; min-width:0; z-index:1; color:#fff; text-shadow:0 1px 3px #000; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px; font-weight:600; }
 .catalog-status { min-height:24px; padding:14px 0; color:var(--muted); text-align:center; font-size:13px; }
 .catalog-sentinel { height:1px; }
+.date-group { margin-bottom:28px; }
+.date-group h3 { margin:0 0 12px; color:var(--muted); font-size:15px; font-weight:700; }
 .main-column[data-view="list"] .grid { display:flex; flex-direction:column; gap:8px; }
 .main-column[data-view="list"] .card { display:grid; grid-template-columns:140px minmax(0,1fr); min-height:170px; }
 .main-column[data-view="list"] .card img, .main-column[data-view="list"] .card .poster { width:140px; height:170px; }

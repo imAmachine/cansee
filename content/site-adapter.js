@@ -34,7 +34,7 @@
         const link = card.querySelector('.shortstoryHead a, .shortstoryFuter a[href*=".html"]');
         const image = card.querySelector('img');
         const text = clean(link?.textContent);
-        return link ? { name: text, url: absolute(link.href), poster: absolute(image?.src), info: clean(card.querySelector('.shortstoryContent')?.textContent).slice(0, 220) } : null;
+        return link ? { name: text, url: absolute(link.href), poster: absolute(image?.src), date: clean(card.querySelector('.staticInfoLeftData')?.textContent), info: clean(card.querySelector('.shortstoryContent')?.textContent).slice(0, 220) } : null;
       }).filter(Boolean);
     },
     latest() {
