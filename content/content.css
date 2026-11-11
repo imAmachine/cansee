@@ -7,6 +7,8 @@
 #vost-app[data-theme="light"] { color-scheme:light; --bg:#f4f6fb; --panel:#fff; --panel2:#e9edf5; --text:#182033; --muted:#59647a; --accent:#6555d8; --line:#d8deea }
 header { background:var(--bg) }
 .theme { width:40px; height:40px; padding:0; border:0; background:transparent; color:var(--text); font-size:24px; line-height:1; }
+.view-toggle { width:36px; height:36px; padding:0; border:0; background:transparent; color:var(--muted); font-size:23px; line-height:1; }
+.view-toggle:hover { color:var(--text); }
 .latest { grid-template-columns:1fr; gap:1px }
 .latest a.latest-item { display:grid; grid-template-columns:32px 1fr auto; align-items:center; gap:12px; white-space:normal }
 .latest-item b { color:var(--accent); font-size:12px }
@@ -139,6 +141,12 @@ header { background:var(--bg) }
 .latest-item .latest-name { grid-column:2; grid-row:1; min-width:0; z-index:1; color:#fff; text-shadow:0 1px 3px #000; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px; font-weight:600; }
 .catalog-status { min-height:24px; padding:14px 0; color:var(--muted); text-align:center; font-size:13px; }
 .catalog-sentinel { height:1px; }
+.main-column[data-view="list"] .grid { display:flex; flex-direction:column; gap:8px; }
+.main-column[data-view="list"] .card { display:grid; grid-template-columns:72px minmax(0,1fr); min-height:88px; }
+.main-column[data-view="list"] .card img, .main-column[data-view="list"] .card .poster { width:72px; height:88px; }
+.main-column[data-view="list"] .card div:last-child { display:flex; flex-direction:column; justify-content:center; padding:10px 14px; }
+.main-column[data-view="list"] .card strong { -webkit-line-clamp:1; }
+.main-column[data-view="list"] .card small { max-height:42px; }
 @media (max-width:850px) { .sidebar { margin-bottom: 18px; } }
 @media (max-width:700px) { .content { padding-top: 18px; } .watch-layout { margin-top: 18px; } .title-head { height:auto; max-height:none; overflow:visible; } .title-head > div { overflow:visible; } .title-head > div > p:last-child { display:block; overflow:visible; } }
 .title-head img { height: 360px; }

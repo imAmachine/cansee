@@ -39,11 +39,12 @@
     const style = document.createElement('style'); style.textContent = css; root.prepend(style);
   });
 
-  function shell(content, active = '') {
+  function shell(content, active = '', options = {}) {
+    const viewToggle = options.view ? '<button id="view-toggle" class="view-toggle" title="Переключить вид" aria-label="Переключить вид">☷</button>' : '';
     app.innerHTML = `<header><a class="brand" href="${location.origin}/">VOST<span>CLEAN</span></a><nav>
       <a class="${active === 'latest' ? 'active' : ''}" href="${location.origin}/">Последние</a>
       <a class="${active === 'catalog' ? 'active' : ''}" href="${location.origin}/page/2/">Каталог</a>
-    </nav><form id="search"><input name="story" placeholder="Найти тайтл…" autocomplete="off"><button>Поиск</button></form><button id="theme" class="theme" title="Сменить тему">☀</button></header><section class="content">${content}</section>`;
+    </nav><form id="search"><input name="story" placeholder="Найти тайтл…" autocomplete="off"><button>Поиск</button></form>${viewToggle}<button id="theme" class="theme" title="Сменить тему">☀</button></header><section class="content">${content}</section>`;
     root.querySelector('#search').addEventListener('submit', e => {
       e.preventDefault(); const value = String(new FormData(e.currentTarget).get('story') || '').trim();
       if (value) {
@@ -57,6 +58,14 @@
     app.dataset.theme = current;
     theme.textContent = current === 'dark' ? '☀' : '☾';
     theme.onclick = () => { const next = app.dataset.theme === 'dark' ? 'light' : 'dark'; app.dataset.theme = next; localStorage.setItem('vost-theme', next); theme.textContent = next === 'dark' ? '☀' : '☾'; };
+    if (options.view) {
+      const toggle = root.querySelector('#view-toggle');
+      const view = localStorage.getItem('vost-view') || 'grid';
+      app.dataset.view = view;
+      toggle.textContent = view === 'grid' ? '☷' : '▦';
+      toggle.title = view === 'grid' ? 'Показать списком' : 'Показать сеткой';
+      toggle.onclick = () => { const next = app.dataset.view === 'grid' ? 'list' : 'grid'; app.dataset.view = next; root.querySelector('.main-column').dataset.view = next; localStorage.setItem('vost-view', next); toggle.textContent = next === 'grid' ? '☷' : '▦'; toggle.title = next === 'grid' ? 'Показать списком' : 'Показать сеткой'; };
+    }
   }
   function cards(items) {
     return items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small></div></a>`).join('');
@@ -68,7 +77,9 @@
     const latestMode = !isSearch && !isCatalog;
     const items = latestMode ? data.latest.map(item => ({ ...item, poster: data.cards.find(card => card.url === item.url)?.poster || cachedCover(item.url), info: '' })) : data.cards;
     shell(`<section class="main-column listing-page"><div class="hero"><h1>${isSearch ? 'Результаты поиска' : (isCatalog ? 'Каталог' : 'Последние')}</h1>${isSearch ? `<p>По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»</p>` : ''}</div>
-      <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section>`, activeSection);
+      <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section>`, activeSection, { view: true });
+    const view = localStorage.getItem('vost-view') || 'grid';
+    root.querySelector('.main-column').dataset.view = view;
     const grid = root.querySelector('#catalog-grid');
     let currentPage = Number(location.pathname.match(/\/page\/(\d+)\//)?.[1] || 1);
     let nextPage = data.pages.find(page => Number(page.name) === currentPage + 1)?.url || null;
