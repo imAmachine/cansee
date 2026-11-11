@@ -28,7 +28,8 @@
     moon:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/></svg>',
     grid:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>',
     list:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14"/></svg>',
-    download:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 20h16"/></svg>'
+    download:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 20h16"/></svg>',
+    cinema:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3m13 5h3a2 2 0 0 0 2-2v-3"/></svg>'
   }[name] || '');
   function makeIcon(name) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -195,8 +196,12 @@
   }
   function title() {
     const x = data;
-    shell(`<article class="title"><div class="title-head">${x.poster ? `<img src="${esc(x.poster)}">` : ''}<div><p class="eyebrow">${esc(x.type)} · ${esc(x.year)}</p><h1>${esc(x.name)}</h1><p class="muted">${esc(x.genre)} · ${esc(x.count)}</p><p>${esc(x.description)}</p></div></div>
-      <div class="watch-layout"><section class="player-column"><div id="player"></div></section><aside class="episode-panel"><div class="episode-panel-head"><h2>Серии</h2><div class="episode-controls"><button id="cinema" class="secondary">Кинотеатр</button><button id="toggle-episodes" class="secondary" title="Скрыть список серий">Скрыть</button></div></div><div class="episodes">${x.episodes.map((e, i) => `<div class="episode" data-watch="${i}" role="button" tabindex="0" aria-label="Смотреть ${esc(e.name)}" aria-pressed="false"><span title="${esc(e.name)}">${esc(e.name)}</span><button class="download-episode" data-episode="${i}" title="Скачать ${esc(e.name)}">↓</button></div>`).join('')}</div><button id="download-all" class="secondary download-all">Скачать всё</button></aside></div></article>`);
+    shell(`<article class="title"><div class="title-head">${x.poster ? `<img src="${esc(x.poster)}" alt="${esc(x.name)}">` : ''}<div><p class="eyebrow">${esc(x.type)} · ${esc(x.year)}</p><h1 title="${esc(x.name)}">${esc(x.name)}</h1><p class="title-meta">${esc(x.genre)} · ${esc(x.count)}</p><p>${esc(x.description)}</p></div></div>
+      <div class="watch-layout"><section class="player-column"><div id="player"></div></section><aside class="episode-panel"><div class="episode-panel-head"><h2>Серии</h2><div class="episode-controls"><button id="cinema" class="secondary" title="Режим кинотеатра"><span>Кинотеатр</span></button><button id="toggle-episodes" class="secondary" title="Скрыть список серий"><span>Скрыть</span></button></div></div><div class="episodes">${x.episodes.map((e, i) => `<div class="episode" data-watch="${i}" role="button" tabindex="0" aria-label="Смотреть ${esc(e.name)}" aria-pressed="false"><span title="${esc(e.name)}">${esc(e.name)}</span><button class="download-episode" data-episode="${i}" title="Скачать ${esc(e.name)}"><span class="download-icon" aria-hidden="true"></span></button></div>`).join('')}</div><button id="download-all" class="secondary download-all"><span>Скачать всё</span></button></aside></div></article>`);
+    root.querySelector('#cinema').prepend(makeIcon('cinema'));
+    root.querySelector('#toggle-episodes').prepend(makeIcon('list'));
+    root.querySelector('#download-all').prepend(makeIcon('download'));
+    root.querySelectorAll('.download-icon').forEach(element => element.replaceWith(makeIcon('download')));
     const resolve = async (episode) => {
       // getlink.php отдаёт устаревший roomfish URL. Штатный frame5 выбирает актуальный сервер.
       const response = await fetch(`${location.origin}/frame5.php?play=${episode.id}&old=1`, { credentials: 'include' });
@@ -237,7 +242,7 @@
     if (x.episodes.length) showEpisode(0);
     else player.innerHTML = '<div class="player-placeholder">Список серий недоступен.</div>';
     root.querySelector('#download-all').onclick = async () => { if (!x.episodes.length || !confirm(`Скачать серий: ${x.episodes.length}?`)) return; try { const items = []; for (const e of x.episodes) { const item = await resolve(e); items.push({ url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` }); } await chrome.runtime.sendMessage({ type: 'downloadMany', items }); root.querySelector('#download-all').textContent = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } };
-    root.querySelector('#toggle-episodes').onclick = () => { const panel = root.querySelector('.episode-panel'); const hidden = panel.classList.toggle('collapsed'); root.querySelector('#toggle-episodes').textContent = hidden ? 'Показать серии' : 'Скрыть'; root.querySelector('#toggle-episodes').title = hidden ? 'Показать список серий' : 'Скрыть список серий'; };
+    root.querySelector('#toggle-episodes').onclick = () => { const panel = root.querySelector('.episode-panel'); const hidden = panel.classList.toggle('collapsed'); root.querySelector('#toggle-episodes span').textContent = hidden ? 'Показать серии' : 'Скрыть'; root.querySelector('#toggle-episodes').title = hidden ? 'Показать список серий' : 'Скрыть список серий'; };
     const episodeRail = root.querySelector('.episode-panel .episodes');
     episodeRail.addEventListener('wheel', event => {
       if (!app.classList.contains('cinema-mode') || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
@@ -265,7 +270,7 @@
     panel.addEventListener('focusout', revealCinemaControls);
     root.querySelector('#cinema').onclick = () => {
       const active = app.classList.toggle('cinema-mode');
-      root.querySelector('#cinema').textContent = active ? 'Выйти' : 'Кинотеатр';
+      root.querySelector('#cinema').querySelector('span:last-child').textContent = active ? 'Выйти' : 'Кинотеатр';
       document.documentElement.classList.toggle('vost-cinema-open', active);
       if (active) revealCinemaControls();
       else { clearTimeout(hideTimer); app.classList.remove('cinema-idle'); }

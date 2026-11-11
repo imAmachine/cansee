@@ -170,11 +170,23 @@ header { padding-left:max(30px, calc((100% - 1500px) / 2 + 30px)); padding-right
 
 /* More compact title typography; description scrolls inside the poster-height header. */
 .title-head h1 { font-size: 24px; line-height: 1.15; margin: 6px 0 10px; }
+.title-head h1 { letter-spacing:-.02em; }
+.title-meta { margin:0 0 12px; font-size:13px; color:var(--muted); }
 .title-head > div > p:last-child { display:block; max-height:230px; overflow-y:auto; padding-right:8px; scrollbar-width:thin; scrollbar-color:var(--accent) var(--panel2); }
 .title-head > div > p:last-child::-webkit-scrollbar { width:5px; }
 .title-head > div > p:last-child::-webkit-scrollbar-thumb { background:var(--accent); border-radius:5px; }
 .section-title h2 { font-size:18px; }
 .episode-panel-head h2 { font-size:16px; }
+.episode-panel-head, .episode-controls, .download-all { display:flex; align-items:center; }
+.episode-controls { gap:5px; }
+.episode-controls button, .download-all { display:inline-flex; align-items:center; gap:6px; }
+.episode-controls svg, .download-all svg, .download-episode svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.episode-panel-head h2 { letter-spacing:-.01em; }
+.episode-panel .episode { min-height:38px; padding:6px 8px; }
+.episode-panel .episode span { font-size:13px; }
+.episode-panel .download-episode { display:inline-flex; align-items:center; justify-content:center; }
+.player-column #player { overflow:hidden; border-radius:10px; }
+.player-column #player video { display:block; }
 @media (max-width:700px) { .title-head h1 { font-size:22px; } .title-head > div > p:last-child { max-height:260px; } }
 
 /* Final UI pass: one spacing scale and no oversized poster blur. */
