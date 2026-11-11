@@ -154,11 +154,11 @@ header { background:var(--bg) }
 .main-column[data-view="grid"] .card-download-all { display:none; }
 
 /* Full-width header and a compact right-aligned action on list cards. */
-header { padding-left:0; padding-right:0; }
+header { padding-left:max(30px, calc((100% - 1500px) / 2 + 30px)); padding-right:max(30px, calc((100% - 1500px) / 2 + 30px)); }
 .main-column[data-view="list"] .card > div:last-child { position:relative; padding-right:150px; }
 .main-column[data-view="list"] .card-download-all { position:absolute; top:50%; right:14px; margin:0; transform:translateY(-50%); display:inline-flex; align-items:center; gap:5px; min-height:30px; white-space:nowrap; border-radius:999px; font-size:11px; font-weight:700; }
 @media (max-width:700px) {
-  header { padding-left:0; padding-right:0; }
+  header { padding-left:14px; padding-right:14px; }
   .main-column[data-view="list"] .card > div:last-child { padding-right:112px; }
   .main-column[data-view="list"] .card-download-all { right:10px; padding:6px 8px; }
 }
