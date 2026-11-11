@@ -149,3 +149,29 @@ header { background:var(--bg) }
 .section-title h2 { font-size:18px; }
 .episode-panel-head h2 { font-size:16px; }
 @media (max-width:700px) { .title-head h1 { font-size:22px; } .title-head > div > p:last-child { max-height:260px; } }
+
+/* Final UI pass: one spacing scale and no oversized poster blur. */
+header { height:64px; gap:28px; }
+.content { padding:16px 30px 56px; }
+.hero { padding-bottom:8px; }
+.hero h1 { margin-bottom:12px; }
+.section-title { margin:24px 0 12px; }
+.grid { gap:14px; }
+.card div:last-child { padding:12px; }
+.layout { gap:30px; }
+.sidebar { top:80px; }
+.sidebar summary { padding:11px 12px; }
+.sidebar .latest a.latest-item { min-height:72px; padding:8px 10px; }
+.latest-item .latest-backdrop { filter:blur(1px); opacity:.68; transform:scale(1.02); }
+.watch-layout { gap:14px; }
+.episode-panel { padding:10px; }
+.episode-panel-head { margin-bottom:8px; }
+.download-all { margin-top:8px; }
+.title-head { gap:28px; }
+@media (max-width:700px) {
+  header { height:60px; }
+  .content { padding:14px 14px 40px; }
+  .title-head { gap:14px; }
+  .title-head img { height:145px; }
+  .section-title { margin-top:20px; }
+}
