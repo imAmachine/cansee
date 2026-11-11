@@ -46,7 +46,7 @@
   function title() {
     const x = data;
     shell(`<article class="title"><div class="title-head">${x.poster ? `<img src="${esc(x.poster)}">` : ''}<div><p class="eyebrow">${esc(x.type)} · ${esc(x.year)}</p><h1>${esc(x.name)}</h1><p class="muted">${esc(x.genre)} · ${esc(x.count)}</p><p>${esc(x.description)}</p></div></div>
-      <div class="watch-layout"><section class="player-column"><div class="player-tools"><button id="cinema" class="secondary">Режим кинотеатра</button></div><div id="player"></div></section><aside class="episode-panel"><div class="episode-panel-head"><h2>Серии</h2><button id="toggle-episodes" class="secondary" title="Скрыть список серий">Скрыть</button></div><div class="episodes">${x.episodes.map((e, i) => `<div class="episode"><span title="${esc(e.name)}">${esc(e.name)}</span><button data-episode="${i}" title="Скачать ${esc(e.name)}">↓</button><button class="watch" data-watch="${i}" title="Смотреть ${esc(e.name)}">▶</button></div>`).join('')}</div><button id="download-all" class="secondary download-all">Скачать всё</button></aside></div></article>`);
+      <div class="watch-layout"><section class="player-column"><div class="player-tools"><button id="cinema" class="secondary">Режим кинотеатра</button></div><div id="player"></div></section><aside class="episode-panel"><div class="episode-panel-head"><h2>Серии</h2><button id="toggle-episodes" class="secondary" title="Скрыть список серий">Скрыть</button></div><div class="episodes">${x.episodes.map((e, i) => `<div class="episode" data-watch="${i}" role="button" tabindex="0" aria-label="Смотреть ${esc(e.name)}" aria-pressed="false"><span title="${esc(e.name)}">${esc(e.name)}</span><button class="download-episode" data-episode="${i}" title="Скачать ${esc(e.name)}">↓</button></div>`).join('')}</div><button id="download-all" class="secondary download-all">Скачать всё</button></aside></div></article>`);
     const resolve = async (episode) => {
       // getlink.php отдаёт устаревший roomfish URL. Штатный frame5 выбирает актуальный сервер.
       const response = await fetch(`${location.origin}/frame5.php?play=${episode.id}&old=1`, { credentials: 'include' });
@@ -58,7 +58,7 @@
       if (!url) throw new Error('Рабочая ссылка на видео не найдена');
       return { url, name: `${x.name} - ${episode.name.replace(/[^\d]+/, '').padStart(2, '0')}` };
     };
-    root.querySelectorAll('[data-episode]').forEach(btn => btn.onclick = async () => { try { const item = await resolve(x.episodes[btn.dataset.episode]); await chrome.runtime.sendMessage({ type: 'download', item: { url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` } }); btn.textContent = 'Отправлено'; } catch (e) { alert(e.message); } });
+    root.querySelectorAll('[data-episode]').forEach(btn => btn.onclick = async event => { event.stopPropagation(); try { const item = await resolve(x.episodes[btn.dataset.episode]); await chrome.runtime.sendMessage({ type: 'download', item: { url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` } }); btn.textContent = '✓'; btn.title = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } });
     let playerRequest = 0;
     const player = root.querySelector('#player');
     async function showEpisode(index, autoplay = false) {
@@ -81,7 +81,10 @@
         if (request === playerRequest) player.innerHTML = `<div class="player-placeholder" role="alert">Не удалось загрузить серию: ${esc(error.message)}</div>`;
       }
     }
-    root.querySelectorAll('[data-watch]').forEach(btn => btn.onclick = () => showEpisode(Number(btn.dataset.watch), true));
+    root.querySelectorAll('.episode[data-watch]').forEach(card => {
+      card.onclick = () => showEpisode(Number(card.dataset.watch), true);
+      card.onkeydown = event => { if (event.target === card && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); showEpisode(Number(card.dataset.watch), true); } };
+    });
     if (x.episodes.length) showEpisode(0);
     else player.innerHTML = '<div class="player-placeholder">Список серий недоступен.</div>';
     root.querySelector('#download-all').onclick = async () => { if (!x.episodes.length || !confirm(`Скачать серий: ${x.episodes.length}?`)) return; try { const items = []; for (const e of x.episodes) { const item = await resolve(e); items.push({ url: item.url, filename: `${safe(x.name)}/${safe(item.name)}.mp4` }); } await chrome.runtime.sendMessage({ type: 'downloadMany', items }); root.querySelector('#download-all').textContent = 'Отправлено в загрузки'; } catch (e) { alert(e.message); } };

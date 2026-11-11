@@ -82,3 +82,7 @@ header { background:var(--bg) }
 .episode.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
 .episode.selected .watch { background:var(--accent); color:#11121a; border-color:var(--accent); }
 @media (min-width:901px) { .watch-layout { grid-template-columns:minmax(0,1fr) 300px; } .episode-panel { width:300px; } }
+.episode[data-watch] { cursor:pointer; transition:background .15s, border-color .15s; }
+.episode[data-watch]:hover { background:var(--panel2); border-color:var(--accent); }
+.episode[data-watch]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.episode .download-episode { flex:0 0 26px; }
