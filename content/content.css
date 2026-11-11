@@ -104,3 +104,14 @@ header { background:var(--bg) }
 @media (max-width:900px) {
   #vost-app.cinema-mode .episode-panel { left:50%; right:auto; top:10px; bottom:auto; width:calc(100vw - 20px); }
 }
+
+/* Keep page content close to the navigation without crowding sections. */
+.content { padding-top: 24px; }
+.hero { padding-top: 0; padding-bottom: 12px; }
+.hero > :first-child, .title-head > div > :first-child { margin-top: 0; }
+.hero > :last-child { margin-bottom: 0; }
+.hero + .section-title { margin-top: 24px; }
+.watch-layout { margin-top: 24px; }
+.title #player { margin-top: 0; }
+@media (max-width:850px) { .sidebar { margin-bottom: 18px; } }
+@media (max-width:700px) { .content { padding-top: 18px; } .watch-layout { margin-top: 18px; } }
