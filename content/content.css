@@ -6,7 +6,7 @@
 #vost-app { background:var(--bg); color:var(--text); font:15px/1.55 Inter,system-ui,sans-serif }
 #vost-app[data-theme="light"] { color-scheme:light; --bg:#f4f6fb; --panel:#fff; --panel2:#e9edf5; --text:#182033; --muted:#59647a; --accent:#6555d8; --line:#d8deea }
 header { background:var(--bg) }
-.theme { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:8px }
+.theme { width:40px; height:40px; padding:0; border:0; background:transparent; color:var(--text); font-size:24px; line-height:1; }
 .latest { grid-template-columns:1fr; gap:1px }
 .latest a.latest-item { display:grid; grid-template-columns:32px 1fr auto; align-items:center; gap:12px; white-space:normal }
 .latest-item b { color:var(--accent); font-size:12px }
@@ -137,6 +137,8 @@ header { background:var(--bg) }
 .latest-item .latest-poster.placeholder { display:block; }
 .latest-item .latest-index { grid-column:1; grid-row:1; color:var(--accent); font-size:12px; font-weight:800; z-index:1; }
 .latest-item .latest-name { grid-column:2; grid-row:1; min-width:0; z-index:1; color:#fff; text-shadow:0 1px 3px #000; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px; font-weight:600; }
+.catalog-status { min-height:24px; padding:14px 0; color:var(--muted); text-align:center; font-size:13px; }
+.catalog-sentinel { height:1px; }
 @media (max-width:850px) { .sidebar { margin-bottom: 18px; } }
 @media (max-width:700px) { .content { padding-top: 18px; } .watch-layout { margin-top: 18px; } .title-head { height:auto; max-height:none; overflow:visible; } .title-head > div { overflow:visible; } .title-head > div > p:last-child { display:block; overflow:visible; } }
 .title-head img { height: 360px; }

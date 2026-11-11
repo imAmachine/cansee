@@ -8,6 +8,26 @@
   function readCoverCache() { try { return JSON.parse(localStorage.getItem(COVER_CACHE_KEY) || '{}'); } catch { return {}; } }
   function cachedCover(url) { const item = readCoverCache()[url]; return item && Date.now() - item.time < COVER_TTL ? item.src : ''; }
   function saveCover(url, src) { try { const cache = readCoverCache(); cache[url] = { src, time: Date.now() }; localStorage.setItem(COVER_CACHE_KEY, JSON.stringify(cache)); } catch {} }
+  const PAGE_CACHE_KEY = 'vost-page-cache-v1';
+  const PAGE_TTL = 15 * 60 * 1000;
+  function readPageCache() { try { return JSON.parse(localStorage.getItem(PAGE_CACHE_KEY) || '{}'); } catch { return {}; } }
+  async function getPage(url) {
+    const cache = readPageCache();
+    if (cache[url] && Date.now() - cache[url].time < PAGE_TTL) return cache[url].html;
+    const response = await fetch(`${url}${url.includes('?') ? '&' : '?'}vost_page=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' });
+    if (!response.ok) throw new Error('Не удалось загрузить страницу каталога');
+    const html = await response.text();
+    try { cache[url] = { html, time: Date.now() }; localStorage.setItem(PAGE_CACHE_KEY, JSON.stringify(cache)); } catch {}
+    return html;
+  }
+  function cardsFromHtml(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return [...doc.querySelectorAll('.shortstory')].map(card => {
+      const link = card.querySelector('.shortstoryHead a, .shortstoryFuter a[href*=".html"]');
+      const image = card.querySelector('img');
+      return link ? { name: A.clean(link.textContent), url: new URL(link.href, location.href).href, poster: image?.src ? new URL(image.src, location.href).href : '', info: A.clean(card.querySelector('.shortstoryContent')?.textContent).slice(0, 220) } : null;
+    }).filter(Boolean);
+  }
   const host = document.createElement('div');
   host.id = 'vost-clean-host';
   const root = host.attachShadow({ mode: 'open' });
@@ -39,14 +59,40 @@
     theme.onclick = () => { const next = app.dataset.theme === 'dark' ? 'light' : 'dark'; app.dataset.theme = next; localStorage.setItem('vost-theme', next); theme.textContent = next === 'dark' ? '☀' : '☾'; };
   }
   function cards(items) {
-    return `<div class="grid">${items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small></div></a>`).join('')}</div>`;
+    return items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small></div></a>`).join('');
   }
   function listing() {
     const latest = data.latest.map(item => ({ ...item, poster: data.cards.find(card => card.url === item.url)?.poster || cachedCover(item.url) })); const items = data.cards;
     const isSearch = location.search.includes('do=search');
+    const isCatalog = !isSearch && location.pathname !== '/' && !location.pathname.endsWith('/index.php');
+    const activeSection = isSearch ? '' : (isCatalog ? 'catalog' : 'latest');
     const recent = latest.length ? `<aside class="sidebar"><details open><summary>Последние обновления <span>${latest.length}</span></summary><div class="latest">${latest.map((x, i) => `<a class="latest-item" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img class="latest-backdrop" src="${esc(x.poster)}" alt="" aria-hidden="true"><img class="latest-poster" src="${esc(x.poster)}" alt="" loading="lazy">` : '<span class="latest-poster placeholder" aria-hidden="true"></span>'}<span class="latest-index">${String(i + 1).padStart(2, '0')}</span><span class="latest-name">${esc(x.name)}</span></a>`).join('')}</div></details></aside>` : '';
-    shell(`<div class="layout">${recent}<section class="main-column"><div class="hero"><p class="eyebrow">ANIMEVOST / CLEAN CLIENT</p><h1>${isSearch ? 'Результаты поиска' : 'Аниме без лишнего шума'}</h1><p>${isSearch ? `По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»` : 'Каталог, последние обновления и быстрый доступ к сериям.'}</p></div>
-      <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : 'Каталог'}</h2><span>${items.length} на странице</span></div>${items.length ? cards(items) : '<div class="empty">Ничего не найдено. Проверьте запрос и попробуйте ещё раз.</div>'}<div class="pages">${data.pages.map(x => `<a href="${esc(x.url)}">${esc(x.name)}</a>`).join('')}</div></section></div>`, isSearch ? '' : 'latest');
+    shell(`<div class="layout">${recent}<section class="main-column"><div class="hero"><h1>${isSearch ? 'Результаты поиска' : (isCatalog ? 'Каталог' : 'Последние')}</h1>${isSearch ? `<p>По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»</p>` : ''}</div>
+      <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : (isCatalog ? 'Каталог' : 'Последние обновления')}</h2><span id="items-count">${items.length} тайтлов</span></div><div id="catalog-grid" class="grid">${items.map(item => cards([item])).join('')}</div><div id="catalog-status" class="catalog-status" role="status"></div></section></div>`, activeSection);
+    const grid = root.querySelector('#catalog-grid');
+    let currentPage = Number(location.pathname.match(/\/page\/(\d+)\//)?.[1] || 1);
+    let nextPage = data.pages.find(page => Number(page.name) === currentPage + 1)?.url || null;
+    let loading = false;
+    const sentinel = document.createElement('div'); sentinel.className = 'catalog-sentinel'; grid.after(sentinel);
+    const loadPage = async () => {
+      if (loading || !nextPage) return;
+      loading = true; root.querySelector('#catalog-status').textContent = 'Загружаем ещё…';
+      try {
+        const html = await getPage(nextPage);
+        const newItems = cardsFromHtml(html);
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        currentPage++;
+        const next = [...doc.querySelectorAll('.block_4 a')].find(a => Number(a.textContent.trim()) === currentPage + 1 && a.getAttribute('href') !== '#');
+        nextPage = next ? new URL(next.getAttribute('href'), location.href).href : null;
+        const known = new Set([...grid.querySelectorAll('.card')].map(card => card.href));
+        newItems.filter(item => !known.has(item.url)).forEach(item => grid.insertAdjacentHTML('beforeend', cards([item])));
+        root.querySelector('#items-count').textContent = `${grid.querySelectorAll('.card').length} тайтлов`;
+        root.querySelector('#catalog-status').textContent = nextPage ? '' : 'Больше тайтлов нет';
+      } catch (error) { root.querySelector('#catalog-status').textContent = `${error.message}. Обновите страницу, чтобы повторить.`; } finally { loading = false; }
+      if (nextPage && sentinel.getBoundingClientRect().top < innerHeight + 500 && !root.querySelector('#catalog-status').textContent) loadPage();
+    };
+    const pageObserver = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) loadPage(); }, { rootMargin: '500px' });
+    pageObserver.observe(sentinel);
     const sidebar = root.querySelector('.sidebar .latest');
     if (sidebar) {
       const pending = [];
