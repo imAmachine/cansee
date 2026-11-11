@@ -113,5 +113,9 @@ header { background:var(--bg) }
 .hero + .section-title { margin-top: 24px; }
 .watch-layout { margin-top: 24px; }
 .title #player { margin-top: 0; }
+.sidebar .latest a.latest-item { display:grid; grid-template-columns:24px 34px minmax(0,1fr); align-items:center; gap:9px; min-height:58px; padding:7px 10px; }
+.latest-item .latest-poster { width:34px; height:44px; object-fit:cover; border-radius:5px; background:var(--panel2); }
+.latest-item .latest-poster.placeholder { display:block; }
+.latest-item span { min-width:0; }
 @media (max-width:850px) { .sidebar { margin-bottom: 18px; } }
 @media (max-width:700px) { .content { padding-top: 18px; } .watch-layout { margin-top: 18px; } }

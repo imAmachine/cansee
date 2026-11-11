@@ -37,11 +37,36 @@
     return `<div class="grid">${items.map(x => `<a class="card" title="${esc(x.name)}" href="${esc(x.url)}">${x.poster ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.name)}">` : '<div class="poster"></div>'}<div><strong title="${esc(x.name)}">${esc(x.name)}</strong><small title="${esc(x.info || '')}">${esc(x.info || '')}</small></div></a>`).join('')}</div>`;
   }
   function listing() {
-    const latest = data.latest; const items = data.cards;
+    const latest = data.latest.map(item => ({ ...item, poster: data.cards.find(card => card.url === item.url)?.poster || '' })); const items = data.cards;
     const isSearch = location.search.includes('do=search');
-    const recent = latest.length ? `<aside class="sidebar"><details open><summary>Последние обновления <span>${latest.length}</span></summary><div class="latest">${latest.map((x, i) => `<a class="latest-item" title="${esc(x.name)}" href="${esc(x.url)}"><b>${String(i + 1).padStart(2, '0')}</b><span>${esc(x.name)}</span></a>`).join('')}</div></details></aside>` : '';
+    const recent = latest.length ? `<aside class="sidebar"><details open><summary>Последние обновления <span>${latest.length}</span></summary><div class="latest">${latest.map((x, i) => `<a class="latest-item" title="${esc(x.name)}" href="${esc(x.url)}"><b>${String(i + 1).padStart(2, '0')}</b>${x.poster ? `<img class="latest-poster" src="${esc(x.poster)}" alt="" loading="lazy">` : '<span class="latest-poster placeholder" aria-hidden="true"></span>'}<span>${esc(x.name)}</span></a>`).join('')}</div></details></aside>` : '';
     shell(`<div class="layout">${recent}<section class="main-column"><div class="hero"><p class="eyebrow">ANIMEVOST / CLEAN CLIENT</p><h1>${isSearch ? 'Результаты поиска' : 'Аниме без лишнего шума'}</h1><p>${isSearch ? `По запросу «${esc(new URLSearchParams(location.search).get('story') || '')}»` : 'Каталог, последние обновления и быстрый доступ к сериям.'}</p></div>
       <div class="section-title"><h2>${isSearch ? 'Найденные тайтлы' : 'Каталог'}</h2><span>${items.length} на странице</span></div>${items.length ? cards(items) : '<div class="empty">Ничего не найдено. Проверьте запрос и попробуйте ещё раз.</div>'}<div class="pages">${data.pages.map(x => `<a href="${esc(x.url)}">${esc(x.name)}</a>`).join('')}</div></section></div>`, isSearch ? '' : 'latest');
+    const sidebar = root.querySelector('.sidebar .latest');
+    if (sidebar) {
+      const observer = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          observer.unobserve(entry.target);
+          const link = entry.target.closest('a');
+          const url = new URL(link.href);
+          if (url.origin !== location.origin) continue;
+          fetch(url.href, { credentials: 'same-origin' }).then(response => {
+            if (!response.ok) throw new Error('Poster unavailable');
+            return response.text();
+          }).then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const src = doc.querySelector('#dle-content .shortstoryContent img.imgRadius')?.getAttribute('src');
+            if (!src) return;
+            const image = document.createElement('img');
+            image.className = 'latest-poster'; image.alt = ''; image.loading = 'lazy';
+            image.src = new URL(src, url.href).href;
+            entry.target.replaceWith(image);
+          }).catch(() => {});
+        }
+      }, { root: sidebar, rootMargin: '100px' });
+      sidebar.querySelectorAll('.latest-poster.placeholder').forEach(element => observer.observe(element));
+    }
   }
   function title() {
     const x = data;
