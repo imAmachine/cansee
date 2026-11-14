@@ -1,21 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "Vost Clean",
-  "version": "1.0.0",
-  "description": "Минималистичный интерфейс для animevost.org и его зеркал.",
-  "permissions": ["downloads", "storage"],
-  "host_permissions": ["https://animevost.org/*", "https://*.vost.pw/*", "https://*.roomfish.ru/*", "https://*.tigerlips.org/*", "https://*.trn.su/*"],
-  "background": { "service_worker": "background.js", "type": "module" },
+  "name": "CanSee",
+  "version": "1.3.1",
+  "description": "Модули оформления для поддерживаемых сайтов.",
+  "permissions": ["downloads", "storage", "activeTab"],
+  "host_permissions": ["https://animevost.org/*", "https://*.vost.pw/*", "https://*.roomfish.ru/*", "https://*.tigerlips.org/*", "https://*.trn.su/*", "https://*.miskuzi.link/*"],
+  "background": { "service_worker": "modules/vost-clean/background.js", "type": "module" },
+  "action": { "default_title": "CanSee", "default_popup": "popup.html" },
   "content_scripts": [{
     "matches": ["https://animevost.org/*", "https://*.vost.pw/*"],
-    "js": ["content/bootstrap.js"],
-    "css": ["content/host.css"],
+    "js": ["core/module-state.js", "modules/vost-clean/bootstrap.js"],
+    "css": ["modules/vost-clean/host.css"],
     "run_at": "document_start"
   }, {
     "matches": ["https://animevost.org/*", "https://*.vost.pw/*"],
-    "js": ["content/site-adapter.js", "content/content.js"],
-    "run_at": "document_idle"
+    "js": ["modules/vost-clean/media.js", "modules/vost-clean/site-adapter.js", "modules/vost-clean/content.js"],
+    "run_at": "document_end"
   }],
-  "action": { "default_title": "Vost Clean" },
-  "web_accessible_resources": [{ "resources": ["content/content.css"], "matches": ["https://animevost.org/*", "https://*.vost.pw/*"] }]
+  "web_accessible_resources": [{ "resources": ["modules/vost-clean/content.css"], "matches": ["https://animevost.org/*", "https://*.vost.pw/*"] }]
 }

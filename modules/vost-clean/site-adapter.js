@@ -17,18 +17,19 @@
       const image = root?.querySelector('img.imgRadius, img');
       const meta = [...(root?.querySelectorAll('p') || [])].map(p => clean(p.textContent));
       const get = (label) => meta.find(x => x.startsWith(label))?.replace(label, '').trim() || '';
-      const episodes = [];
-      for (const script of document.scripts) {
-        const match = script.textContent.match(/var data\s*=\s*\{([\s\S]*?)\};/);
-        if (!match) continue;
-        for (const item of match[1].matchAll(/"([^"\n]+)"\s*:\s*"?(\d+)"?/g)) episodes.push({ name: item[1], id: item[2] });
-      }
+      const episodes = window.VostMedia.episodes([...document.scripts].map(script => script.textContent).join('\n'));
+      const frameEpisodes = episodes.length <= 12 ? episodes : Array.from({ length: 12 }, (_, index) => episodes[Math.round(index * (episodes.length - 1) / 11)]);
+      const screenshots = frameEpisodes.map(episode => ({
+        src: `https://media.aniland.org/img/${encodeURIComponent(episode.id)}.jpg`,
+        alt: `${clean(heading?.textContent || document.title)} — ${episode.name}`,
+        label: episode.name
+      }));
       return {
         name: clean(heading?.textContent || document.title).replace(/\s*\[[^\]]+\]\s*$/, ''),
         poster: absolute(image?.getAttribute('src')),
         year: get('Год выхода:'), genre: get('Жанр:'), type: get('Тип:'), count: get('Количество серий:'),
         description: clean(root?.querySelector('[itemprop="description"], .shortstoryContent p:last-of-type')?.textContent),
-        episodes
+        episodes, screenshots
       };
     },
     cards() {
@@ -41,6 +42,21 @@
     },
     latest() {
       return [...document.querySelectorAll('.raspis_fixed a')].map(a => ({ name: clean(a.textContent), url: absolute(a.href) }));
+    },
+    schedule() {
+      const days = [['Mon', 'Понедельник'], ['Tue', 'Вторник'], ['Wed', 'Среда'], ['Thu', 'Четверг'], ['Fri', 'Пятница'], ['Sat', 'Суббота'], ['Sun', 'Воскресенье']];
+      return days.map(([id, name]) => ({
+        name,
+        items: [...document.querySelectorAll(`#raspis${id} a[href]`)].flatMap(link => {
+          try {
+            const url = new URL(link.getAttribute('href'), location.href);
+            const text = clean(link.textContent);
+            if (url.origin !== location.origin || !/^https?:$/.test(url.protocol) || !text) return [];
+            const match = text.match(/^(.*?)\s*~\s*\(([^)]+)\)\s*$/);
+            return [{ name: match ? match[1].trim() : text, time: match ? match[2].trim() : '', url: url.href }];
+          } catch { return []; }
+        })
+      }));
     },
     pages() {
       return [...document.querySelectorAll('.block_4 a')].map(a => ({ name: clean(a.textContent), url: absolute(a.href) }));

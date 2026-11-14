@@ -1,7 +1,7 @@
 const queue = [];
 let active = 0;
 const MAX_ACTIVE = 2;
-const MEDIA_HOSTS = ['tigerlips.org', 'trn.su', 'roomfish.ru'];
+const MEDIA_HOSTS = ['tigerlips.org', 'trn.su', 'roomfish.ru', 'miskuzi.link'];
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || !['download', 'downloadMany'].includes(message.type)) return false;
@@ -39,7 +39,7 @@ function isSupportedSender(sender) {
   try {
     const url = new URL(sender.url);
     return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
-      (url.hostname === 'animevost.org' || url.hostname.endsWith('.vost.pw'));
+      (url.hostname === 'animevost.org' || url.hostname === 'vost.pw' || url.hostname.endsWith('.vost.pw'));
   } catch {
     return false;
   }
